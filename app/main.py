@@ -8,7 +8,13 @@ from app.errors import register_error_handlers
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="Heirloom API")
+    # Docs live under /api with everything else, so one proxy rule covers the whole service.
+    app = FastAPI(
+        title="Heirloom API",
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
+    )
 
     # Bearer tokens, no cookies, so credentials aren't needed.
     app.add_middleware(

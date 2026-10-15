@@ -9,7 +9,7 @@ Postgres 17 runs natively via **Postgres.app** (port 5432, your macOS user, no p
 ```bash
 uv sync                                   # install deps
 cp .env.example .env                      # first time only; fill in GROQ_API_KEY
-uv run uvicorn app.main:app --reload      # http://localhost:8000/api/health, docs at /docs
+uv run uvicorn app.main:app --reload      # http://localhost:8000/api/health, docs at /api/docs
 uv run pytest                             # tests (always use the heirloom_test database)
 uv run ruff format . && uv run ruff check .
 uv run alembic upgrade head               # apply migrations to the dev database

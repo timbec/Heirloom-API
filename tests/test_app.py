@@ -12,6 +12,11 @@ async def test_health(client: AsyncClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
+async def test_docs_live_under_api(client: AsyncClient) -> None:
+    assert (await client.get("/api/docs")).status_code == 200
+    assert (await client.get("/api/openapi.json")).status_code == 200
+
+
 async def test_cors_preflight_allows_frontend_origin(client: AsyncClient) -> None:
     response = await client.options(
         "/api/health",

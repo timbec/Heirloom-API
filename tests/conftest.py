@@ -15,8 +15,11 @@ from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # noqa: E402
 from sqlalchemy.pool import NullPool  # noqa: E402
 
-from app.db import engine  # noqa: E402
+from app.db import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models import User  # noqa: E402
+from app.rate_limit import login_limiter  # noqa: E402
+from app.security import hash_password  # noqa: E402
 
 
 def alembic(*args: str) -> None:
@@ -58,6 +61,39 @@ async def db(migrated_db: None) -> AsyncIterator[AsyncSession]:
 
 
 @pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
+async def client(db: AsyncSession) -> AsyncIterator[AsyncClient]:
+    """An HTTP client for the app, sharing the test's rolled-back database session."""
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            yield c
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits() -> None:
+    login_limiter.reset()
+
+
+PASSWORD = "correct horse battery"
+
+
+async def make_user(db: AsyncSession, email: str = "ada@example.com", **kwargs) -> User:
+    user = User(email=email, name="Ada", password_hash=hash_password(PASSWORD), **kwargs)
+    db.add(user)
+    await db.flush()
+    return user
+
+
+@pytest.fixture
+async def user(db: AsyncSession) -> User:
+    return await make_user(db)
+
+
+@pytest.fixture
+async def auth_headers(client: AsyncClient, user: User) -> dict[str, str]:
+    response = await client.post(
+        "/api/auth/login", json={"email": user.email, "password": PASSWORD}
+    )
+    return {"Authorization": f"Bearer {response.json()['token']}"}

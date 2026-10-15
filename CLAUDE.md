@@ -37,6 +37,13 @@ Databases: `heirloom` (dev) and `heirloom_test` (tests). If they're missing:
 - `POST /api/auth/logout` revokes the current token; `GET /api/auth/me` returns the user.
 - No public sign-up yet: create users with the CLI. In tests, use the `user` and `auth_headers` fixtures.
 
+## App endpoints (`/api/heirloom/v1`)
+
+- Routers in `app/api/` are mounted on `v1_router` in `app/api/__init__.py`. Request/response models live in `app/schemas/`.
+- Lists return `{data: [...]}` (`ListResponse`), unpaginated. The frontend resolves subject slugs from the full list.
+- Load owned resources with `get_owned_subject` / `get_owned_session` (`app/api/ownership.py`): 404 if missing, 403 `{"message": "Forbidden"}` if another user's. Referencing someone else's subject in a request body gets the same 422 as a missing one.
+- Optional text fields use `OptionalText` / `OptionalShortText` (`app/schemas/common.py`): trimmed, with `""` turned into `null`, as Laravel did.
+
 ## Conventions
 
 - Every route lives under `/api`. Keep the existing contract (`docs/backend-port.md` §4) so `heirloom-web` works unchanged.

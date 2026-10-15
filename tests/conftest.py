@@ -91,9 +91,19 @@ async def user(db: AsyncSession) -> User:
     return await make_user(db)
 
 
-@pytest.fixture
-async def auth_headers(client: AsyncClient, user: User) -> dict[str, str]:
+async def login_headers(client: AsyncClient, user: User) -> dict[str, str]:
     response = await client.post(
         "/api/auth/login", json={"email": user.email, "password": PASSWORD}
     )
     return {"Authorization": f"Bearer {response.json()['token']}"}
+
+
+@pytest.fixture
+async def auth_headers(client: AsyncClient, user: User) -> dict[str, str]:
+    return await login_headers(client, user)
+
+
+@pytest.fixture
+async def other_headers(client: AsyncClient, db: AsyncSession) -> dict[str, str]:
+    """A second, unrelated user, for checking that users can't see each other's data."""
+    return await login_headers(client, await make_user(db, email="bob@example.com"))

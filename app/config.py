@@ -10,6 +10,11 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://localhost:5432/heirloom"
 
+    # Signs the admin panel's session cookie. Required: set a long random value per environment.
+    secret_key: str
+    # Send the admin cookie over HTTPS only. Turn on everywhere except local development.
+    secure_cookies: bool = False
+
     # Comma-separated in the environment.
     cors_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:3000",

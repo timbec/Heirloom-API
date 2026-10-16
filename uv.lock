@@ -351,8 +351,10 @@ dependencies = [
     { name = "asyncpg" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "itsdangerous" },
     { name = "pwdlib", extra = ["argon2"] },
     { name = "pydantic-settings" },
+    { name = "sqladmin" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -371,8 +373,10 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.32.0" },
     { name = "fastapi", specifier = ">=0.143.2" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.3.1" },
     { name = "pydantic-settings", specifier = ">=2.16.0" },
+    { name = "sqladmin", specifier = ">=0.32.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.4" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.54.0" },
 ]
@@ -502,6 +506,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/01/e1/2069291243c926a2ff1cd706c7f3eeb9b62144bf60f77c9fb9ff2fb26bd3/iniconfig-2.3.1.tar.gz", hash = "sha256:67f4b9c50da0dedf52af349e7749a80a9057a5031199791b906c3bb3ae878960", size = 21209, upload-time = "2026-10-06T22:48:38.076Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/56/43/4ca9e49d27a1fcf6bece6f6aec0ea46bb9112489b93d4b688fb415457bdb/iniconfig-2.3.1-py3-none-any.whl", hash = "sha256:9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7", size = 7552, upload-time = "2026-10-06T22:48:36.959Z" },
+]
+
+[[package]]
+name = "itsdangerous"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/cb/8ac0172223afbccb63986cc25049b154ecfb5e85932587206f42317be31d/itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173", size = 54410, upload-time = "2024-04-16T21:28:15.614Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/96/92447566d16df59b2a776c0fb82dbc4d9e07cd95062562af01e408583fc4/itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef", size = 16234, upload-time = "2024-04-16T21:28:14.499Z" },
+]
+
+[[package]]
+name = "jinja2"
+version = "3.1.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
 ]
 
 [[package]]
@@ -831,6 +856,15 @@ wheels = [
 ]
 
 [[package]]
+name = "python-multipart"
+version = "0.0.32"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/42/55c32bb9b12693c092ad250a0e82edb5b31ddeda6eb772de5f308b3804ad/python_multipart-0.0.32.tar.gz", hash = "sha256:be54b7f3fa167bb83e4fcd936b887b708f4e57fe75911c02aebf53efaf8d938e", size = 46881, upload-time = "2026-06-04T16:18:58.647Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/04/e8135ebd1ad02c56ec633277529b2602ff99ff634be76cdba5744cf554fd/python_multipart-0.0.32-py3-none-any.whl", hash = "sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23", size = 30042, upload-time = "2026-06-04T16:18:57.319Z" },
+]
+
+[[package]]
 name = "pyyaml"
 version = "6.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -901,6 +935,22 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0a/e8/1e186578076aff7a80735f625005fde678412ab609cd323ed182eb7d6b87/ruff-0.17.1-py3-none-win32.whl", hash = "sha256:1de0030a8aa78c65c5fecb84b2e5c390ac684c0452875a02afc7c083d49a496a", size = 9895093, upload-time = "2026-10-15T15:23:10.582Z" },
     { url = "https://files.pythonhosted.org/packages/6a/2e/da3d9589bae8e8b58f3a48bd5bc0b980232fb14a83bf02c3be7660f87c1b/ruff-0.17.1-py3-none-win_amd64.whl", hash = "sha256:5df76f16580fab58d0f6c98a3ac254a4abceb7b2489b8b678335869cff77b3d7", size = 10097955, upload-time = "2026-10-15T15:23:13.309Z" },
     { url = "https://files.pythonhosted.org/packages/df/c9/0f2a4dea06a5e12c1191ee3d96b1e1233797d0d5e18f97a2b909a95a9836/ruff-0.17.1-py3-none-win_arm64.whl", hash = "sha256:42400b9a6ff8515ff27796f07f92e0195be011c86e81e381606f58ea5502fef4", size = 9853542, upload-time = "2026-10-15T15:23:16.05Z" },
+]
+
+[[package]]
+name = "sqladmin"
+version = "0.32.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "python-multipart" },
+    { name = "sqlalchemy" },
+    { name = "starlette" },
+    { name = "wtforms" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a7/ea/ba6e016faf975531fd9911e3ae11093b86894d176c86b9a0ba3b8177fa4a/sqladmin-0.32.0.tar.gz", hash = "sha256:4433dd89f6442856efa8f1ed1acf4b1b8ba67abe15ca54f9364c043ed301c823", size = 1029593, upload-time = "2026-09-20T23:18:00.088Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/89/df5319e0d786a53929f9eb44711d759fd3b7fa56b5c95cbb056250b99a4b/sqladmin-0.32.0-py3-none-any.whl", hash = "sha256:4f5cff4ab8e5349a3dcad17f3a4d46a7867b54b92ac45e5626fdb96e465c127f", size = 1071265, upload-time = "2026-09-20T23:17:58.685Z" },
 ]
 
 [[package]]
@@ -1210,4 +1260,16 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2b/bf/3d7c33b8d5e7712a60e0149c017ed50394ec5e8cf72e5cb6a1ffaf11a42d/websockets-17.2-cp315-cp315t-win_amd64.whl", hash = "sha256:315551f4ccedbbf9fd4f7e8bf037a5948c976ade0e919ba5d8f581d465f6f725", size = 218169, upload-time = "2026-10-03T14:56:37.79Z" },
     { url = "https://files.pythonhosted.org/packages/27/57/ab34cc6460c5322e6932750fa5c6c64be89e6ee4e2707d13c4e9d3312b25/websockets-17.2-cp315-cp315t-win_arm64.whl", hash = "sha256:0a6220bdf8d5f11af71251a599092d89ac1d6bfac691c7f5951c5b07953947a0", size = 218089, upload-time = "2026-10-03T14:56:39.427Z" },
     { url = "https://files.pythonhosted.org/packages/8a/58/835cd51934d6780fa586f275b5d9901eead6d81569b4343b3767cdbaae4c/websockets-17.2-py3-none-any.whl", hash = "sha256:6aa59f0ef92e796b2db6f5f26550c4713c0e4036899fadf02f55e2ed4db0b7ae", size = 211883, upload-time = "2026-10-03T14:56:51.898Z" },
+]
+
+[[package]]
+name = "wtforms"
+version = "3.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e9/91/ed9b517da898e3fb747566aa3c12a734bd64ea7449a0d25ec74ce8f8b8eb/wtforms-3.2.2.tar.gz", hash = "sha256:7b00c73f8670f35d4edb0293dcd81b980528bee72fd662b182aaba27ae570b93", size = 139583, upload-time = "2026-05-03T05:53:44.147Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/76/bb225c8300f3a0ba28e01df51419c6c9574a297c43d71b29048e03b65deb/wtforms-3.2.2-py3-none-any.whl", hash = "sha256:72b90d5d921bd3119252069cf0301e9c13915f9e52792652bc91c5dda4b79e56", size = 158656, upload-time = "2026-05-03T05:53:46.072Z" },
 ]

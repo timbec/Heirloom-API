@@ -8,7 +8,7 @@ Postgres 17 runs natively via **Postgres.app** (port 5432, your macOS user, no p
 
 ```bash
 uv sync                                   # install deps
-cp .env.example .env                      # first time only; fill in GROQ_API_KEY
+cp .env.example .env                      # first time only; fill in SECRET_KEY and GROQ_API_KEY
 uv run uvicorn app.main:app --reload      # http://localhost:8000/api/health, docs at /api/docs
 uv run pytest                             # tests (always use the heirloom_test database)
 uv run ruff format . && uv run ruff check .
@@ -43,6 +43,14 @@ Databases: `heirloom` (dev) and `heirloom_test` (tests). If they're missing:
 - Lists return `{data: [...]}` (`ListResponse`), unpaginated. The frontend resolves subject slugs from the full list.
 - Load owned resources with `get_owned_subject` / `get_owned_session` (`app/api/ownership.py`): 404 if missing, 403 `{"message": "Forbidden"}` if another user's. Referencing someone else's subject in a request body gets the same 422 as a missing one.
 - Optional text fields use `OptionalText` / `OptionalShortText` (`app/schemas/common.py`): trimmed, with `""` turned into `null`, as Laravel did.
+
+## Admin panel (`/admin`)
+
+- SQLAdmin, set up in `app/admin.py` and mounted in `create_app`. One `ModelView` per model; sees every user's data.
+- Login is a session cookie signed with `SECRET_KEY` (8 hours, `SECURE_COOKIES=true` outside local dev). Admins only (`users.is_admin`), checked on every request; 5 login attempts per IP per minute.
+- Mostly read-only: view, search and delete. Users: edit name and admin flag only; create users with the CLI.
+- The admin uses its own DB sessions (`SessionLocal`), not `get_db`, so admin tests commit real rows and clean up (see `tests/test_admin.py`).
+- Models define `__str__`; that's how related records are labelled in the panel.
 
 ## AI calls
 

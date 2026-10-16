@@ -30,6 +30,9 @@ class User(Base):
         # Stored lowercased so lookups and the unique constraint are case-insensitive.
         return value.strip().lower()
 
+    def __str__(self) -> str:
+        return self.email
+
 
 class ApiToken(Base):
     """A bearer token. Only the sha256 of the token is stored."""

@@ -8,8 +8,10 @@ dependencies = [
     "asyncpg>=0.32.0",
     "fastapi>=0.143.2",
     "httpx>=0.28.1",
+    "itsdangerous>=2.2.0",
     "pwdlib[argon2]>=0.3.1",
     "pydantic-settings>=2.16.0",
+    "sqladmin>=0.32.0",
     "sqlalchemy[asyncio]>=2.1.4",
     "uvicorn[standard]>=0.54.0",
 ]

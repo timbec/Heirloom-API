@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.admin import mount_admin
 from app.api import api_router
 from app.config import get_settings
 from app.errors import register_error_handlers
@@ -25,6 +26,7 @@ def create_app() -> FastAPI:
     )
     register_error_handlers(app)
     app.include_router(api_router, prefix="/api")
+    mount_admin(app)
     return app
 
 

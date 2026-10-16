@@ -43,6 +43,9 @@ class InterviewSession(Base):
         back_populates="session", cascade="all, delete-orphan", passive_deletes=True
     )
 
+    def __str__(self) -> str:
+        return self.title or f"Session {self.id}"
+
 
 class Transcript(Base):
     __tablename__ = "transcripts"
@@ -64,6 +67,9 @@ class Transcript(Base):
         passive_deletes=True,
         order_by="Turn.turn_index",
     )
+
+    def __str__(self) -> str:
+        return f"Transcript {self.id}"
 
 
 class Turn(Base):
@@ -91,3 +97,6 @@ class Turn(Base):
     scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     transcript: Mapped[Transcript] = relationship(back_populates="turns")
+
+    def __str__(self) -> str:
+        return f"Turn {self.turn_index}"

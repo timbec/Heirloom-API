@@ -36,3 +36,6 @@ class Subject(Base):
     narratives: Mapped[list["Narrative"]] = relationship(
         back_populates="subject", cascade="all, delete-orphan", passive_deletes=True
     )
+
+    def __str__(self) -> str:
+        return self.name

@@ -5,6 +5,7 @@ os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://localhost:5432/heirloom_test"
 )
 # Fixed fake AI settings, so tests never depend on (or call with) the real key in .env.
+os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["GROQ_API_KEY"] = "test-key"
 os.environ["GROQ_BASE_URL"] = "https://groq.test/openai/v1"
 os.environ["GROQ_MODEL"] = "test-narrative-model"
@@ -21,6 +22,7 @@ from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # noqa: E402
 from sqlalchemy.pool import NullPool  # noqa: E402
 
+from app.admin import admin_login_limiter  # noqa: E402
 from app.db import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
@@ -80,6 +82,7 @@ async def client(db: AsyncSession) -> AsyncIterator[AsyncClient]:
 @pytest.fixture(autouse=True)
 def reset_rate_limits() -> None:
     login_limiter.reset()
+    admin_login_limiter.reset()
 
 
 PASSWORD = "correct horse battery"

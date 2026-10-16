@@ -42,3 +42,6 @@ class Narrative(Base):
     error: Mapped[str | None] = mapped_column(Text)
 
     subject: Mapped["Subject"] = relationship(back_populates="narratives")
+
+    def __str__(self) -> str:
+        return f"{self.format} #{self.id}"

@@ -113,14 +113,13 @@ async def test_turn_index_unique_per_transcript(db: AsyncSession) -> None:
         await db.flush()
 
 
-async def test_one_narrative_per_subject_and_format(db: AsyncSession) -> None:
+async def test_narratives_keep_history(db: AsyncSession) -> None:
     user = await make_story(db)
     subject = user.subjects[0]
-    db.add(Narrative(subject_id=subject.id, format=NarrativeFormat.LETTER))
-    await db.flush()  # a different format is fine
-    db.add(Narrative(subject_id=subject.id, format=NarrativeFormat.MEMOIR))
-    with pytest.raises(IntegrityError):
-        await db.flush()
+    db.add(Narrative(subject_id=subject.id, format=NarrativeFormat.MEMOIR, session_ids=[1, 2]))
+    await db.flush()  # a second memoir for the same subject is a new version, not a clash
+    assert await count(db, Narrative) == 2
+    assert subject.narratives[0].session_ids == []
 
 
 async def test_scores_must_be_0_to_10(db: AsyncSession) -> None:

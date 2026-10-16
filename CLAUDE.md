@@ -44,6 +44,12 @@ Databases: `heirloom` (dev) and `heirloom_test` (tests). If they're missing:
 - Load owned resources with `get_owned_subject` / `get_owned_session` (`app/api/ownership.py`): 404 if missing, 403 `{"message": "Forbidden"}` if another user's. Referencing someone else's subject in a request body gets the same 422 as a missing one.
 - Optional text fields use `OptionalText` / `OptionalShortText` (`app/schemas/common.py`): trimmed, with `""` turned into `null`, as Laravel did.
 
+## AI calls
+
+- `app/services/groq.py` (`chat_completion`) is the only place that talks to Groq. It raises `AIError` for anything unusable. Base URL, key and model names come from settings.
+- `app/services/narratives.py` holds the narrative prompt (ported verbatim from Laravel) and `generate_narrative`. Every attempt is saved as a new `Narrative` row (history is kept), failures included, with `error`, `model` and `session_ids`.
+- Tests pin fake `GROQ_*` settings in `tests/conftest.py` and fake the HTTP calls with respx (`https://groq.test/...`). They never use the real key.
+
 ## Conventions
 
 - Every route lives under `/api`. Keep the existing contract (`docs/backend-port.md` §4) so `heirloom-web` works unchanged.

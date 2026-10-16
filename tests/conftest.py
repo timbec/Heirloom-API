@@ -4,6 +4,12 @@ import os
 os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://localhost:5432/heirloom_test"
 )
+# Fixed fake AI settings, so tests never depend on (or call with) the real key in .env.
+os.environ["GROQ_API_KEY"] = "test-key"
+os.environ["GROQ_BASE_URL"] = "https://groq.test/openai/v1"
+os.environ["GROQ_MODEL"] = "test-narrative-model"
+os.environ["GROQ_SCORING_MODEL"] = "test-scoring-model"
+os.environ["GROQ_TRANSCRIPTION_MODEL"] = "test-transcription-model"
 
 import asyncio  # noqa: E402
 import subprocess  # noqa: E402

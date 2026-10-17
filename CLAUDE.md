@@ -58,6 +58,9 @@ Databases: `heirloom` (dev) and `heirloom_test` (tests). If they're missing:
 - `app/services/narratives.py` holds the narrative prompt (ported verbatim from Laravel) and `generate_narrative`. Every attempt is saved as a new `Narrative` row (history is kept), failures included, with `error`, `model` and `session_ids`.
 - `transcribe_audio` (same module) sends audio to Whisper with `response_format=verbose_json`, which also gives the duration.
 - Uploaded audio is saved by `app/services/storage.py` under `STORAGE_DIR` (default `storage/`, gitignored) **before** transcription, so a failed transcription keeps the recording. `sessions.audio_path` is relative to the storage root. Swap that module for S3 at deploy time.
+- `app/services/turns.py` (`parse_turns`) splits transcripts into turns: `Q:`/`A:` (including inline) or named speakers (`MARCUS:`/`FRANK:`). Recurring labels are speakers; the interviewer is `Q` or whoever asks most. Short interviewer interjections stay inside the answer.
+- `app/services/scoring.py` holds the scoring prompts (verbatim from Laravel) and `score_turns`: concurrent (2 at a time), JSON validated by `TurnScore`, gold quotes dropped if not really in the answer. Groq's limit is **8,000 tokens/minute per model** on the current plan, so `chat_completion` retries 429s, following `retry-after`.
+- `uv run python -m scripts.score_fixtures [--models …]` scores `tests/fixtures/interviews/*.txt` with the real API and writes a Markdown report to `reports/` (gitignored), for checking scoring by hand.
 - Tests pin fake `GROQ_*` settings and a temporary `STORAGE_DIR` in `tests/conftest.py` and fake the HTTP calls with respx (`https://groq.test/...`). They never use the real key.
 
 ## Conventions

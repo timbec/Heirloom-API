@@ -14,3 +14,4 @@ wheels/
 storage/
 .ruff_cache/
 .pytest_cache/
+reports/

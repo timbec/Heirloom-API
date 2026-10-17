@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_model: str | None = None
     groq_scoring_model: str | None = None
+    # Sent as reasoning_effort for reasoning models (gpt-oss: low/medium/high). Unset: not sent.
+    groq_scoring_reasoning_effort: str | None = None
     groq_transcription_model: str | None = None
 
     @field_validator("cors_origins", mode="before")

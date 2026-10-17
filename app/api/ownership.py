@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.models import InterviewSession, Subject, User
+from app.models import InterviewSession, Subject, Transcript, User
 
 
 def _check_owner(owner_id: int, user: User) -> None:
@@ -35,3 +35,16 @@ async def get_owned_session(db: AsyncSession, session_id: int, user: User) -> In
         raise HTTPException(status_code=404, detail="Session not found.")
     _check_owner(session.subject.user_id, user)
     return session
+
+
+async def get_owned_transcript(db: AsyncSession, transcript_id: int, user: User) -> Transcript:
+    """The transcript with its session and subject loaded."""
+    transcript = await db.scalar(
+        select(Transcript)
+        .where(Transcript.id == transcript_id)
+        .options(joinedload(Transcript.session).joinedload(InterviewSession.subject))
+    )
+    if transcript is None:
+        raise HTTPException(status_code=404, detail="Transcript not found.")
+    _check_owner(transcript.session.subject.user_id, user)
+    return transcript

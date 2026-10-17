@@ -13,6 +13,7 @@ os.environ["GROQ_API_KEY"] = "test-key"
 os.environ["GROQ_BASE_URL"] = "https://groq.test/openai/v1"
 os.environ["GROQ_MODEL"] = "test-narrative-model"
 os.environ["GROQ_SCORING_MODEL"] = "test-scoring-model"
+os.environ["GROQ_SCORING_REASONING_EFFORT"] = "low"
 os.environ["GROQ_TRANSCRIPTION_MODEL"] = "test-transcription-model"
 
 import asyncio  # noqa: E402

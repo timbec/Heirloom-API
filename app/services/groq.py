@@ -1,5 +1,6 @@
 """Thin client for Groq's OpenAI-compatible API. Base URL and model names come from settings."""
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,20 @@ from app.config import get_settings
 
 class AIError(Exception):
     """The AI call couldn't be made or didn't return usable output."""
+
+
+# Groq's limits are per minute (8,000 tokens/minute per model on the current plan), so a
+# 429 can mean waiting most of a minute. Follow its retry-after and keep trying.
+RATE_LIMIT_RETRIES = 6
+MAX_RETRY_DELAY_SECONDS = 60.0
+
+
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    try:
+        delay = float(response.headers["retry-after"])
+    except (KeyError, ValueError):
+        delay = 2.0**attempt
+    return min(delay, MAX_RETRY_DELAY_SECONDS)
 
 
 async def chat_completion(
@@ -33,11 +48,20 @@ async def chat_completion(
 
     try:
         async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-            response = await client.post(
-                f"{settings.groq_base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-                json={"model": model, "max_tokens": max_tokens, "messages": messages, **options},
-            )
+            for attempt in range(RATE_LIMIT_RETRIES + 1):
+                response = await client.post(
+                    f"{settings.groq_base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                    json={
+                        "model": model,
+                        "max_tokens": max_tokens,
+                        "messages": messages,
+                        **options,
+                    },
+                )
+                if response.status_code != 429 or attempt == RATE_LIMIT_RETRIES:
+                    break
+                await asyncio.sleep(_retry_delay(response, attempt))
     except httpx.HTTPError as exc:
         raise AIError(f"Couldn't reach Groq: {exc!r}") from exc
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api import auth, health, narratives, sessions, subjects, transcripts
+from app.api import auth, health, narratives, sessions, subjects, transcripts, turns
 
 # Heirloom's app endpoints, at the paths the frontend already calls.
 v1_router = APIRouter(prefix="/heirloom/v1")
@@ -8,6 +8,7 @@ v1_router.include_router(subjects.router)
 v1_router.include_router(sessions.router)
 v1_router.include_router(transcripts.router)
 v1_router.include_router(narratives.router)
+v1_router.include_router(turns.router)
 
 api_router = APIRouter()
 api_router.include_router(health.router)

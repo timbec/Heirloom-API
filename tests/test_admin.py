@@ -13,7 +13,15 @@ from sqlalchemy import delete, update
 from app.config import get_settings
 from app.db import SessionLocal
 from app.main import app
-from app.models import InterviewSession, Narrative, Subject, Transcript, TranscriptSource, User
+from app.models import (
+    InterviewSession,
+    Narrative,
+    Subject,
+    Transcript,
+    TranscriptSource,
+    Turn,
+    User,
+)
 from app.security import hash_password
 from tests.conftest import PASSWORD
 
@@ -200,3 +208,24 @@ async def test_failed_scoring_shows_a_message(browser: AsyncClient, people):
     page = await browser.get(response.headers["location"])
     assert "couldn&#39;t be scored" in page.text or "couldn't be scored" in page.text
     assert "not scored" in page.text
+
+
+async def test_turns_page_is_paginated(browser: AsyncClient, people, monkeypatch):
+    monkeypatch.setattr("app.admin.TURNS_PER_PAGE", 1)
+    async with SessionLocal() as db:
+        db.add(
+            Turn(transcript_id=people["transcript"], turn_index=0, question="First?", answer="One")
+        )
+        db.add(
+            Turn(transcript_id=people["transcript"], turn_index=1, question="Second?", answer="Two")
+        )
+        await db.commit()
+    await admin_login(browser, ADMIN_EMAIL)
+    view = f"/admin/transcript/action/view-turns?pks={people['transcript']}"
+
+    first = (await browser.get(view)).text
+    assert "First?" in first and "Second?" not in first
+    assert "Turns 0–0 of 2" in first
+    second = (await browser.get(view + "&page=2")).text
+    assert "Second?" in second and "First?" not in second
+    assert (await browser.get(view + "&page=99")).status_code == 200  # clamped to the last page

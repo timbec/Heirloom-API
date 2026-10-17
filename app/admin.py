@@ -4,6 +4,7 @@ Mostly read-only: records are viewed, searched and deleted here, but created and
 the app, where validation lives. Users are created with the CLI (passwords need hashing).
 """
 
+from math import ceil
 from pathlib import Path
 from statistics import mean
 from urllib.parse import urlencode
@@ -28,6 +29,7 @@ from app.services.turns import TurnParseError
 admin_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
 EIGHT_HOURS = 8 * 60 * 60
+TURNS_PER_PAGE = 10
 
 
 class AdminAuth(AuthenticationBackend):
@@ -201,6 +203,12 @@ class TranscriptAdmin(ModelView, model=Transcript):
             return RedirectResponse(request.url_for("admin:list", identity="transcript"))
 
         turns = transcript.turns
+        pages = max(1, ceil(len(turns) / TURNS_PER_PAGE))
+        try:
+            page = min(max(1, int(request.query_params.get("page", 1))), pages)
+        except ValueError:
+            page = 1
+        shown = turns[(page - 1) * TURNS_PER_PAGE : page * TURNS_PER_PAGE]
         scored = [t for t in turns if t.scored_at]
         summary = {
             "total": len(turns),
@@ -219,8 +227,13 @@ class TranscriptAdmin(ModelView, model=Transcript):
                 "transcript": transcript,
                 "session": transcript.session,
                 "subject": transcript.session.subject,
-                "turns": turns,
+                "turns": shown,
                 "summary": summary,
+                "page": page,
+                "pages": pages,
+                "first_index": shown[0].turn_index if shown else 0,
+                "last_index": shown[-1].turn_index if shown else 0,
+                "page_url": lambda p: self._action_url(request, "view-turns", pk, page=str(p)),
                 "message": request.query_params.get("message"),
                 "score_url": self._action_url(request, "score-turns", pk),
                 "transcript_url": request.url_for("admin:details", identity="transcript", pk=pk),

@@ -4,18 +4,26 @@ Mostly read-only: records are viewed, searched and deleted here, but created and
 the app, where validation lives. Users are created with the CLI (passwords need hashing).
 """
 
+from pathlib import Path
+from statistics import mean
+from urllib.parse import urlencode
+
 from fastapi import FastAPI, HTTPException
 from markupsafe import Markup, escape
-from sqladmin import Admin, ModelView
+from sqladmin import Admin, ModelView, action
 from sqladmin.authentication import AuthenticationBackend
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload, selectinload
 from starlette.requests import Request
+from starlette.responses import RedirectResponse, Response
 
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models import InterviewSession, Narrative, Subject, Transcript, Turn, User
 from app.rate_limit import RateLimiter, client_ip
 from app.security import verify_password
+from app.services.turn_scoring import rescore_transcript
+from app.services.turns import TurnParseError
 
 admin_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
@@ -136,6 +144,89 @@ class TranscriptAdmin(ModelView, model=Transcript):
     can_create = False
     can_edit = False
 
+    def _action_url(self, request: Request, name: str, pk: int, **params: str) -> str:
+        return f"{self._url_for_action(request, name)}?{urlencode({'pks': pk, **params})}"
+
+    @action(
+        name="score-turns",
+        label="Score turns",
+        confirmation_message=(
+            "Split the selected transcript(s) into turns and score each one with the AI? "
+            "Earlier scores are replaced. This can take a minute or two per transcript."
+        ),
+    )
+    async def score_turns(self, request: Request) -> Response:
+        """Runs the same scoring as the API, then shows the results (or the list, for several)."""
+        pks = [int(pk) for pk in request.query_params.get("pks", "").split(",") if pk]
+        message = ""
+        for pk in pks:
+            async with SessionLocal() as db:
+                transcript = await db.scalar(
+                    select(Transcript)
+                    .where(Transcript.id == pk)
+                    .options(joinedload(Transcript.session).joinedload(InterviewSession.subject))
+                )
+                if transcript is None:
+                    continue
+                try:
+                    turns, scored = await rescore_transcript(db, transcript)
+                except TurnParseError as exc:
+                    message = str(exc)
+                    continue
+                if scored < len(turns):
+                    message = (
+                        f"{len(turns) - scored} of {len(turns)} turns couldn't be scored "
+                        "(usually the AI's rate limit). Score again to retry."
+                    )
+        if len(pks) == 1:
+            params = {"message": message} if message else {}
+            return RedirectResponse(
+                self._action_url(request, "view-turns", pks[0], **params), status_code=303
+            )
+        return RedirectResponse(request.url_for("admin:list", identity="turn"), status_code=303)
+
+    @action(name="view-turns", label="View turns", add_in_list=False)
+    async def view_turns(self, request: Request) -> Response:
+        pk = int(request.query_params.get("pks", "0").split(",")[0] or 0)
+        async with SessionLocal() as db:
+            transcript = await db.scalar(
+                select(Transcript)
+                .where(Transcript.id == pk)
+                .options(
+                    joinedload(Transcript.session).joinedload(InterviewSession.subject),
+                    selectinload(Transcript.turns),
+                )
+            )
+        if transcript is None:
+            return RedirectResponse(request.url_for("admin:list", identity="transcript"))
+
+        turns = transcript.turns
+        scored = [t for t in turns if t.scored_at]
+        summary = {
+            "total": len(turns),
+            "scored": len(scored),
+            "gold": sum(t.is_gold for t in scored),
+            "avg_specificity": round(mean(t.specificity for t in scored), 1) if scored else "–",
+            "avg_charge": round(mean(t.emotional_charge for t in scored), 1) if scored else "–",
+            "open_threads": [(t.turn_index, t.open_thread) for t in scored if t.open_thread],
+            "scored_with": sorted({t.scored_with for t in scored if t.scored_with}),
+        }
+        return await self.templates.TemplateResponse(
+            request,
+            "heirloom/transcript_turns.html",
+            {
+                "title": "Turns",
+                "transcript": transcript,
+                "session": transcript.session,
+                "subject": transcript.session.subject,
+                "turns": turns,
+                "summary": summary,
+                "message": request.query_params.get("message"),
+                "score_url": self._action_url(request, "score-turns", pk),
+                "transcript_url": request.url_for("admin:details", identity="transcript", pk=pk),
+            },
+        )
+
 
 class TurnAdmin(ModelView, model=Turn):
     name_plural = "Turns"
@@ -149,6 +240,7 @@ class TurnAdmin(ModelView, model=Turn):
         Turn.is_gold,
         Turn.gold_quote,
         Turn.open_thread,
+        Turn.sensitivity,
     ]
     column_labels = {Turn.turn_index: "#", Turn.emotional_charge: "Charge"}
     column_formatters = {Turn.gold_quote: _truncate(60), Turn.open_thread: _truncate(40)}
@@ -190,6 +282,7 @@ def mount_admin(app: FastAPI) -> Admin:
         session_maker=SessionLocal,
         base_url="/admin",
         title="Heirloom admin",
+        templates_dir=str(Path(__file__).parent / "templates"),
         authentication_backend=AdminAuth(
             secret_key=settings.secret_key,
             max_age=EIGHT_HOURS,

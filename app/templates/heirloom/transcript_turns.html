@@ -1,0 +1,85 @@
+{% extends "sqladmin/layout.html" %}
+{# Scored turns for one transcript. Rendered by TranscriptAdmin.view_turns in app/admin.py. #}
+
+{% block content_header %}
+<div class="row align-items-center">
+  <div class="col">
+    <div class="page-pretitle">
+      {{ subject.name }} · {{ session }} · transcript {{ transcript.id }} ({{ transcript.source }})
+    </div>
+    <h2 class="page-title">Turns</h2>
+  </div>
+  <div class="col-auto d-flex gap-2">
+    <a href="{{ transcript_url }}" class="btn btn-secondary">Back to transcript</a>
+    <a href="{{ score_url }}" class="btn btn-primary"
+       onclick="this.classList.add('disabled'); this.textContent = 'Scoring… this can take a minute or two';">
+      {{ "Score again" if turns else "Score turns" }}
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="col-12">
+  {% if message %}
+  <div class="alert alert-warning">{{ message }}</div>
+  {% endif %}
+
+  {% if not turns %}
+  <div class="card"><div class="card-body">
+    This transcript hasn't been split into turns yet. Use <strong>Score turns</strong> to run it.
+  </div></div>
+  {% else %}
+  <div class="card mb-3"><div class="card-body">
+    <div class="row text-center">
+      <div class="col"><div class="h2 mb-0">{{ summary.total }}</div><div class="text-secondary">turns</div></div>
+      <div class="col"><div class="h2 mb-0">{{ summary.scored }}</div><div class="text-secondary">scored</div></div>
+      <div class="col"><div class="h2 mb-0">{{ summary.gold }}</div><div class="text-secondary">gold</div></div>
+      <div class="col"><div class="h2 mb-0">{{ summary.avg_specificity }}</div><div class="text-secondary">avg specificity</div></div>
+      <div class="col"><div class="h2 mb-0">{{ summary.avg_charge }}</div><div class="text-secondary">avg charge</div></div>
+      <div class="col"><div class="h2 mb-0">{{ summary.open_threads | length }}</div><div class="text-secondary">open threads</div></div>
+    </div>
+    {% if summary.scored_with %}
+    <div class="text-secondary mt-3">Scored with {{ summary.scored_with | join(", ") }}.</div>
+    {% endif %}
+  </div></div>
+
+  {% if summary.open_threads %}
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Open threads, for the next session</h3></div>
+    <div class="card-body"><ul class="mb-0">
+      {% for index, thread in summary.open_threads %}<li>{{ thread }} <span class="text-secondary">(turn {{ index }})</span></li>{% endfor %}
+    </ul></div>
+  </div>
+  {% endif %}
+
+  {% for turn in turns %}
+  <div class="card mb-3 {% if turn.is_gold %}border-warning{% endif %}">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+      <strong class="me-2">{{ turn.turn_index }}.</strong>
+      {% if turn.scored_at %}
+        <span class="badge bg-blue-lt">specificity {{ turn.specificity }}</span>
+        <span class="badge bg-purple-lt">charge {{ turn.emotional_charge }}</span>
+        <span class="badge bg-secondary-lt">{{ turn.thread_type }}</span>
+        {% if turn.is_gold %}<span class="badge bg-yellow text-dark">★ gold</span>{% endif %}
+        {% if turn.sensitivity == "off_record" %}<span class="badge bg-red">⛔ off the record</span>{% endif %}
+        {% if turn.sensitivity == "handle_with_care" %}<span class="badge bg-orange">⚠ handle with care</span>{% endif %}
+      {% else %}
+        <span class="badge bg-red-lt">not scored</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <p class="mb-2"><strong>Q:</strong> {{ turn.question or "(no question)" }}</p>
+      <div style="white-space: pre-wrap" class="mb-0"><strong>A:</strong> {{ turn.answer }}</div>
+      {% if turn.gold_quote %}
+      <blockquote class="mt-3 mb-0 p-2 border-start border-4 border-warning bg-yellow-lt">“{{ turn.gold_quote }}”</blockquote>
+      {% endif %}
+      {% if turn.open_thread %}
+      <div class="mt-2 text-secondary"><em>Open thread:</em> {{ turn.open_thread }}</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

@@ -51,6 +51,7 @@ Databases: `heirloom` (dev) and `heirloom_test` (tests). If they're missing:
 - Mostly read-only: view, search and delete. Users: edit name and admin flag only; create users with the CLI.
 - The admin uses its own DB sessions (`SessionLocal`), not `get_db`, so admin tests commit real rows and clean up (see `tests/test_admin.py`).
 - Models define `__str__`; that's how related records are labelled in the panel.
+- **Transcripts have two actions:** "Score turns" (runs `rescore_transcript`, the same code as the API, then redirects) and "View turns" (the results page, template `app/templates/heirloom/transcript_turns.html`, extending SQLAdmin's layout). Custom templates live in `app/templates/` (`templates_dir`), namespaced under `heirloom/`.
 
 ## AI calls
 
@@ -59,6 +60,7 @@ Databases: `heirloom` (dev) and `heirloom_test` (tests). If they're missing:
 - `transcribe_audio` (same module) sends audio to Whisper with `response_format=verbose_json`, which also gives the duration.
 - Uploaded audio is saved by `app/services/storage.py` under `STORAGE_DIR` (default `storage/`, gitignored) **before** transcription, so a failed transcription keeps the recording. `sessions.audio_path` is relative to the storage root. Swap that module for S3 at deploy time.
 - `app/services/turns.py` (`parse_turns`) splits transcripts into turns: `Q:`/`A:` (including inline) or named speakers (`MARCUS:`/`FRANK:`). Recurring labels are speakers; the interviewer is `Q` or whoever asks most. Short interviewer interjections stay inside the answer.
+- `app/services/turn_scoring.py` (`rescore_transcript`) parses, scores and saves turns; the API and the admin both call it. `SCORING_PROMPT` (`v1`/`v2`) picks the prompt; each turn records `scored_with` (model and prompt) and, under v2, `sensitivity`.
 - `app/services/scoring.py` holds the scoring prompts (verbatim from Laravel) and `score_turns`: concurrent (2 at a time), JSON validated by `TurnScore`, gold quotes dropped if not really in the answer. Groq's limit is **8,000 tokens/minute per model** on the current plan, so `chat_completion` retries 429s, following `retry-after`.
 - `uv run python -m scripts.score_fixtures [--models …]` scores `tests/fixtures/interviews/*.txt` with the real API and writes a Markdown report to `reports/` (gitignored), for checking scoring by hand.
 - Tests pin fake `GROQ_*` settings and a temporary `STORAGE_DIR` in `tests/conftest.py` and fake the HTTP calls with respx (`https://groq.test/...`). They never use the real key.

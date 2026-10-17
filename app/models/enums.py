@@ -31,3 +31,9 @@ class ThreadType(StrEnum):
     NEW = "new"
     CONTINUATION = "continuation"
     REHEARSED = "rehearsed"
+
+
+class Sensitivity(StrEnum):
+    NONE = "none"
+    HANDLE_WITH_CARE = "handle_with_care"
+    OFF_RECORD = "off_record"  # the speaker asked for it not to be shared

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models import ThreadType
+from app.models import Sensitivity, ThreadType
 
 
 class TurnOut(BaseModel):
@@ -19,6 +19,8 @@ class TurnOut(BaseModel):
     is_gold: bool
     gold_quote: str | None
     open_thread: str | None
+    sensitivity: Sensitivity | None
     scored_at: datetime | None
+    scored_with: str | None
     created_at: datetime
     updated_at: datetime

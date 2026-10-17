@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_model: str | None = None
     groq_scoring_model: str | None = None
+    # Which scoring prompt the app uses (see PROMPTS in app/services/scoring.py).
+    scoring_prompt: Literal["v1", "v2"] = "v1"
     # Sent as reasoning_effort for reasoning models (gpt-oss: low/medium/high). Unset: not sent.
     groq_scoring_reasoning_effort: str | None = None
     groq_transcription_model: str | None = None

@@ -4,6 +4,7 @@ from app.models.base import Base
 from app.models.enums import (
     JobStatus,
     NarrativeFormat,
+    Sensitivity,
     SessionStatus,
     ThreadType,
     TranscriptSource,
@@ -20,6 +21,7 @@ __all__ = [
     "JobStatus",
     "Narrative",
     "NarrativeFormat",
+    "Sensitivity",
     "SessionStatus",
     "Subject",
     "ThreadType",

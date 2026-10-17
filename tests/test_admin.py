@@ -1,12 +1,16 @@
 """The admin panel reads through its own database sessions, so these tests commit real rows
 (and always delete them afterwards) instead of using the rolled-back `db` fixture."""
 
+import json
 from collections.abc import AsyncIterator
 
+import httpx
 import pytest
+import respx
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, update
 
+from app.config import get_settings
 from app.db import SessionLocal
 from app.main import app
 from app.models import InterviewSession, Narrative, Subject, Transcript, TranscriptSource, User
@@ -35,7 +39,12 @@ async def people(migrated_db: None) -> AsyncIterator[dict[str, int]]:
         subject.narratives = [Narrative(narrative_text="I was born in Leeds.", session_ids=[1])]
         db.add_all([admin, member])
         await db.commit()
-        ids = {"admin": admin.id, "member": member.id, "subject": subject.id}
+        ids = {
+            "admin": admin.id,
+            "member": member.id,
+            "subject": subject.id,
+            "transcript": session.transcript.id,
+        }
     try:
         yield ids
     finally:
@@ -117,3 +126,77 @@ async def test_login_is_rate_limited(browser: AsyncClient, people):
         await admin_login(browser, ADMIN_EMAIL, "wrong password")
     response = await admin_login(browser, ADMIN_EMAIL)  # right password, still blocked
     assert response.status_code == 400
+
+
+GROQ_CHAT = "https://groq.test/openai/v1/chat/completions"
+
+
+def scoring_reply(**overrides) -> httpx.Response:
+    score = {
+        "specificity": 8,
+        "emotional_charge": 6,
+        "thread_type": "new",
+        "is_gold": True,
+        "gold_quote": "in the back bedroom",
+        "open_thread": "the house in Leeds",
+        **overrides,
+    }
+    return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(score)}}]})
+
+
+async def test_score_and_view_turns(browser: AsyncClient, people):
+    await admin_login(browser, ADMIN_EMAIL)
+    view = f"/admin/transcript/action/view-turns?pks={people['transcript']}"
+    score = f"/admin/transcript/action/score-turns?pks={people['transcript']}"
+
+    page = await browser.get(view)
+    assert page.status_code == 200
+    assert "hasn't been split into turns yet" in page.text
+
+    with respx.mock(assert_all_called=False) as mock:
+        mock.post(GROQ_CHAT).return_value = scoring_reply()
+        response = await browser.get(score)
+    assert response.status_code == 303
+    assert "view-turns" in response.headers["location"]
+
+    page = await browser.get(response.headers["location"])
+    assert page.status_code == 200
+    assert "Grandma Rose" in page.text
+    assert "★ gold" in page.text
+    assert "“in the back bedroom”" in page.text
+    assert "the house in Leeds" in page.text
+    assert "test-scoring-model, prompt v1" in page.text
+
+    # The detail page offers both buttons.
+    detail = await browser.get(f"/admin/transcript/details/{people['transcript']}")
+    assert "Score turns" in detail.text and "View turns" in detail.text
+
+
+async def test_prompt_v2_saves_sensitivity(browser: AsyncClient, people, monkeypatch):
+    monkeypatch.setattr(get_settings(), "scoring_prompt", "v2")
+    await admin_login(browser, ADMIN_EMAIL)
+    with respx.mock(assert_all_called=False) as mock:
+        route = mock.post(GROQ_CHAT)
+        route.return_value = scoring_reply(sensitivity="off_record")
+        response = await browser.get(
+            f"/admin/transcript/action/score-turns?pks={people['transcript']}"
+        )
+        sent = json.loads(route.calls.last.request.content)
+    assert "sensitivity" in sent["messages"][0]["content"]  # the v2 prompt was used
+
+    page = await browser.get(response.headers["location"])
+    assert "⛔ off the record" in page.text
+    assert "★ gold" not in page.text  # off the record is never gold
+    assert "prompt v2" in page.text
+
+
+async def test_failed_scoring_shows_a_message(browser: AsyncClient, people):
+    await admin_login(browser, ADMIN_EMAIL)
+    with respx.mock(assert_all_called=False) as mock:
+        mock.post(GROQ_CHAT).return_value = httpx.Response(500, text="down")
+        response = await browser.get(
+            f"/admin/transcript/action/score-turns?pks={people['transcript']}"
+        )
+    page = await browser.get(response.headers["location"])
+    assert "couldn&#39;t be scored" in page.text or "couldn't be scored" in page.text
+    assert "not scored" in page.text

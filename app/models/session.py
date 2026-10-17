@@ -16,7 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, str_enum
-from app.models.enums import JobStatus, SessionStatus, ThreadType, TranscriptSource
+from app.models.enums import JobStatus, Sensitivity, SessionStatus, ThreadType, TranscriptSource
 
 if TYPE_CHECKING:
     from app.models.subject import Subject
@@ -94,7 +94,10 @@ class Turn(Base):
     is_gold: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     gold_quote: Mapped[str | None] = mapped_column(Text)
     open_thread: Mapped[str | None] = mapped_column(Text)
+    sensitivity: Mapped[Sensitivity | None] = mapped_column(str_enum(Sensitivity))
     scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Which model and prompt version produced the scores, e.g. "openai/gpt-oss-120b, prompt v2".
+    scored_with: Mapped[str | None] = mapped_column(String(150))
 
     transcript: Mapped[Transcript] = relationship(back_populates="turns")
 

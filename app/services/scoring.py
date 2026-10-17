@@ -8,12 +8,12 @@ import asyncio
 import json
 import re
 from collections.abc import Sequence
-from typing import Literal, Protocol
+from typing import Protocol
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from app.config import get_settings
-from app.models import ThreadType
+from app.models import Sensitivity, ThreadType
 from app.services.groq import AIError, chat_completion
 
 # Room for a reasoning model (at low effort) to think before the JSON. Groq counts the requested
@@ -159,10 +159,8 @@ class TurnScore(BaseModel):
     # A gold quote the model offered that isn't actually in the answer (e.g. lifted from the
     # context turns). Kept for reports, never saved.
     rejected_quote: str | None = Field(default=None, exclude=True)
-    # Only the v2 draft asks for this; not saved until a migration adds it.
-    sensitivity: Literal["none", "handle_with_care", "off_record"] | None = Field(
-        default=None, exclude=True
-    )
+    # Only prompt v2 asks for this; None under v1.
+    sensitivity: Sensitivity | None = None
 
     @field_validator("gold_quote", "open_thread", mode="before")
     @classmethod
@@ -171,7 +169,7 @@ class TurnScore(BaseModel):
 
     @model_validator(mode="after")
     def quote_only_when_gold(self) -> "TurnScore":
-        if self.sensitivity == "off_record":
+        if self.sensitivity == Sensitivity.OFF_RECORD:
             self.is_gold = False
         if not self.is_gold:
             self.gold_quote = None

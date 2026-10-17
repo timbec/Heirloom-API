@@ -34,5 +34,23 @@
     "family_structure": "Married to Carol for 51 years (died 2023). Two children; interviewed by his son Marcus, 47.",
     "life_chapters": null,
     "interests": null
+  },
+  "frances-kowalski": {
+    "name": "Frances Kowalski",
+    "birth_year": 1937,
+    "places_lived": "Fourth Street, Bethlehem, Pennsylvania",
+    "education_profession": "Worked the lunch counter at Woolworth's in the 1950s",
+    "family_structure": "Married Eddie Kowalski. Three children (Linda, Carol, Michael). Father worked at Bethlehem Steel.",
+    "life_chapters": "Polish-American childhood; Woolworth's; marriage (1958) and family",
+    "interests": null
+  },
+  "douglas-reid": {
+    "name": "Douglas \"Dougie\" Reid",
+    "birth_year": 1940,
+    "places_lived": "Peterhead, Scotland",
+    "education_profession": "Inshore and deep-sea fisherman for 40 years",
+    "family_structure": "Married to Moira; son Iain",
+    "life_chapters": "Forty years at sea; lost friends at sea",
+    "interests": null
   }
 }

@@ -53,33 +53,48 @@
   </div>
   {% endif %}
 
-  {% for turn in turns %}
-  <div class="card mb-3 {% if turn.is_gold %}border-warning{% endif %}">
-    <div class="card-header d-flex flex-wrap gap-2 align-items-center">
-      <strong class="me-2">{{ turn.turn_index }}.</strong>
-      {% if turn.scored_at %}
-        <span class="badge bg-blue-lt">specificity {{ turn.specificity }}</span>
-        <span class="badge bg-purple-lt">charge {{ turn.emotional_charge }}</span>
-        <span class="badge bg-secondary-lt">{{ turn.thread_type }}</span>
-        {% if turn.is_gold %}<span class="badge bg-yellow text-dark">★ gold</span>{% endif %}
-        {% if turn.sensitivity == "off_record" %}<span class="badge bg-red">⛔ off the record</span>{% endif %}
-        {% if turn.sensitivity == "handle_with_care" %}<span class="badge bg-orange">⚠ handle with care</span>{% endif %}
-      {% else %}
-        <span class="badge bg-red-lt">not scored</span>
-      {% endif %}
-    </div>
-    <div class="card-body">
-      <p class="mb-2"><strong>Q:</strong> {{ turn.question or "(no question)" }}</p>
-      <div style="white-space: pre-wrap" class="mb-0"><strong>A:</strong> {{ turn.answer }}</div>
-      {% if turn.gold_quote %}
-      <blockquote class="mt-3 mb-0 p-2 border-start border-4 border-warning bg-yellow-lt">“{{ turn.gold_quote }}”</blockquote>
-      {% endif %}
-      {% if turn.open_thread %}
-      <div class="mt-2 text-secondary"><em>Open thread:</em> {{ turn.open_thread }}</div>
-      {% endif %}
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table card-table align-top">
+        <thead>
+          <tr>
+            <th class="w-1">#</th>
+            <th style="min-width: 14rem; width: 18%">Question</th>
+            <th style="min-width: 22rem">Answer</th>
+            <th class="w-1 text-center" title="Specificity">Spec.</th>
+            <th class="w-1 text-center" title="Emotional charge">Charge</th>
+            <th class="w-1">Thread</th>
+            <th style="min-width: 16rem; width: 22%">Gold quote · open thread</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for turn in turns %}
+          <tr class="{% if turn.is_gold %}bg-yellow-lt{% endif %}">
+            <td class="text-secondary">{{ turn.turn_index }}</td>
+            <td>{{ turn.question or "(no question)" }}</td>
+            <td><div style="white-space: pre-wrap; max-height: 16rem; overflow-y: auto">{{ turn.answer }}</div></td>
+            {% if turn.scored_at %}
+            <td class="text-center fs-3">{{ turn.specificity }}</td>
+            <td class="text-center fs-3">{{ turn.emotional_charge }}</td>
+            <td>
+              <span class="badge bg-secondary-lt">{{ turn.thread_type }}</span>
+              {% if turn.is_gold %}<div class="mt-1"><span class="badge bg-yellow text-dark">★ gold</span></div>{% endif %}
+              {% if turn.sensitivity == "off_record" %}<div class="mt-1"><span class="badge bg-red">⛔ off the record</span></div>{% endif %}
+              {% if turn.sensitivity == "handle_with_care" %}<div class="mt-1"><span class="badge bg-orange">⚠ handle with care</span></div>{% endif %}
+            </td>
+            {% else %}
+            <td colspan="3"><span class="badge bg-red-lt">not scored</span></td>
+            {% endif %}
+            <td>
+              {% if turn.gold_quote %}<blockquote class="mb-2 p-2 border-start border-4 border-warning">“{{ turn.gold_quote }}”</blockquote>{% endif %}
+              {% if turn.open_thread %}<div class="text-secondary"><em>Open thread:</em> {{ turn.open_thread }}</div>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
-  {% endfor %}
   {% endif %}
 </div>
 {% endblock %}

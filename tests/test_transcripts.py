@@ -1,8 +1,13 @@
+import httpx
+import pytest
+import respx
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models import Turn
+from app.services.storage import absolute_path
 
 SUBJECTS = "/api/heirloom/v1/subjects"
 SESSIONS = "/api/heirloom/v1/sessions"
@@ -93,3 +98,98 @@ async def test_other_users_cannot_read_or_write(
     assert (
         await client.get(f"{SESSIONS}/999999/transcript", headers=auth_headers)
     ).status_code == 404
+
+
+# --- Audio --------------------------------------------------------------------------------
+
+GROQ_TRANSCRIBE = "https://groq.test/openai/v1/audio/transcriptions"
+AUDIO = b"ID3" + b"\x00" * 2048  # stands in for an mp3; the fake Whisper doesn't decode it
+
+
+@pytest.fixture
+def whisper():
+    with respx.mock(assert_all_called=False) as mock:
+        yield mock.post(GROQ_TRANSCRIBE)
+
+
+def audio_url(session: dict) -> str:
+    return f"{SESSIONS}/{session['id']}/transcribe"
+
+
+async def upload(
+    client: AsyncClient, session: dict, headers: dict, name="interview.mp3", data=AUDIO
+):
+    return await client.post(audio_url(session), files={"audio": (name, data)}, headers=headers)
+
+
+async def test_transcribe_audio(client: AsyncClient, db: AsyncSession, auth_headers: dict, whisper):
+    whisper.return_value = httpx.Response(
+        200, json={"text": "  Q: Where were you born? A: Leeds.  ", "duration": 12.6}
+    )
+    session = await make_session(client, auth_headers)
+
+    response = await upload(client, session, auth_headers, name="Mum Interview.MP3")
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["transcript_text"] == "Q: Where were you born? A: Leeds."
+    assert body["source"] == "audio"
+    assert body["status"] == "completed"
+    assert body["duration_seconds"] == 13
+
+    # What was sent to Whisper.
+    sent = whisper.calls.last.request
+    assert sent.headers["authorization"] == "Bearer test-key"
+    assert b'name="model"\r\n\r\ntest-transcription-model' in sent.content
+    assert b'name="response_format"\r\n\r\nverbose_json' in sent.content
+    assert AUDIO in sent.content
+
+    # The original recording is kept, and the session points at it.
+    saved = (await client.get(f"{SESSIONS}/{session['id']}", headers=auth_headers)).json()
+    assert saved["status"] == "transcribed"
+    assert saved["duration_seconds"] == 13
+    assert saved["audio_path"].startswith(f"audio/session-{session['id']}/")
+    assert saved["audio_path"].endswith(".mp3")
+    assert absolute_path(saved["audio_path"]).read_bytes() == AUDIO
+
+
+async def test_audio_validation(client: AsyncClient, auth_headers: dict, whisper, monkeypatch):
+    session = await make_session(client, auth_headers)
+
+    response = await client.post(audio_url(session), headers=auth_headers)  # no file
+    assert response.status_code == 422
+    assert "audio" in response.json()["errors"]
+
+    response = await upload(client, session, auth_headers, name="notes.pdf")
+    assert response.status_code == 422
+    assert "must be a file of type" in response.json()["errors"]["audio"][0]
+
+    monkeypatch.setattr(get_settings(), "max_audio_mb", 1)
+    response = await upload(client, session, auth_headers, data=b"x" * (1024 * 1024 + 1))
+    assert response.status_code == 422
+    assert "larger than 1 MB" in response.json()["message"]
+    assert not list(absolute_path(f"audio/session-{session['id']}").glob("*"))  # nothing left
+    assert not whisper.called
+
+
+async def test_failed_transcription_keeps_the_recording(
+    client: AsyncClient, auth_headers: dict, whisper
+):
+    whisper.return_value = httpx.Response(500, text="upstream error")
+    session = await make_session(client, auth_headers)
+
+    response = await upload(client, session, auth_headers)
+    assert response.status_code == 502
+    assert response.json() == {"message": "Transcription failed. Please try again."}
+
+    saved = (await client.get(f"{SESSIONS}/{session['id']}", headers=auth_headers)).json()
+    assert saved["status"] == "pending"
+    assert absolute_path(saved["audio_path"]).read_bytes() == AUDIO
+    assert (await client.get(transcript_url(session), headers=auth_headers)).status_code == 404
+
+
+async def test_other_users_cannot_upload(
+    client: AsyncClient, auth_headers: dict, other_headers: dict, whisper
+):
+    session = await make_session(client, auth_headers)
+    assert (await upload(client, session, other_headers)).status_code == 403
+    assert not whisper.called

@@ -56,7 +56,9 @@ Databases: `heirloom` (dev) and `heirloom_test` (tests). If they're missing:
 
 - `app/services/groq.py` (`chat_completion`) is the only place that talks to Groq. It raises `AIError` for anything unusable. Base URL, key and model names come from settings.
 - `app/services/narratives.py` holds the narrative prompt (ported verbatim from Laravel) and `generate_narrative`. Every attempt is saved as a new `Narrative` row (history is kept), failures included, with `error`, `model` and `session_ids`.
-- Tests pin fake `GROQ_*` settings in `tests/conftest.py` and fake the HTTP calls with respx (`https://groq.test/...`). They never use the real key.
+- `transcribe_audio` (same module) sends audio to Whisper with `response_format=verbose_json`, which also gives the duration.
+- Uploaded audio is saved by `app/services/storage.py` under `STORAGE_DIR` (default `storage/`, gitignored) **before** transcription, so a failed transcription keeps the recording. `sessions.audio_path` is relative to the storage root. Swap that module for S3 at deploy time.
+- Tests pin fake `GROQ_*` settings and a temporary `STORAGE_DIR` in `tests/conftest.py` and fake the HTTP calls with respx (`https://groq.test/...`). They never use the real key.
 
 ## Conventions
 

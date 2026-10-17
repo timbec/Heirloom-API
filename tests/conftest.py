@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 # Always point at the test database (never the dev one) before anything imports app settings.
 os.environ["DATABASE_URL"] = os.environ.get(
@@ -6,6 +7,8 @@ os.environ["DATABASE_URL"] = os.environ.get(
 )
 # Fixed fake AI settings, so tests never depend on (or call with) the real key in .env.
 os.environ["SECRET_KEY"] = "test-secret-key"
+# Uploads go to a throwaway folder, never the real storage/.
+os.environ["STORAGE_DIR"] = tempfile.mkdtemp(prefix="heirloom-test-storage-")
 os.environ["GROQ_API_KEY"] = "test-key"
 os.environ["GROQ_BASE_URL"] = "https://groq.test/openai/v1"
 os.environ["GROQ_MODEL"] = "test-narrative-model"

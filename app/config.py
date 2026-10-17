@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated
 
 from pydantic import field_validator
@@ -14,6 +15,10 @@ class Settings(BaseSettings):
     secret_key: str
     # Send the admin cookie over HTTPS only. Turn on everywhere except local development.
     secure_cookies: bool = False
+
+    # Where uploaded audio is kept (local disk for now; S3 at deploy time).
+    storage_dir: Path = Path("storage")
+    max_audio_mb: int = 25  # Groq's upload limit
 
     # Comma-separated in the environment.
     cors_origins: Annotated[list[str], NoDecode] = [

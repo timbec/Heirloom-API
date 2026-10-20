@@ -26,6 +26,7 @@
   </div>
   <div class="col-auto d-flex gap-2">
     <a href="{{ transcript_url }}" class="btn btn-secondary">Back to transcript</a>
+    <a href="{{ review_url }}" class="btn btn-secondary">Review</a>
     <a href="{{ score_url }}" class="btn btn-primary"
        onclick="this.classList.add('disabled'); this.textContent = 'Scoring… this can take a minute or two';">
       {{ "Score again" if turns else "Score turns" }}

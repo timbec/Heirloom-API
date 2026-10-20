@@ -1,0 +1,139 @@
+{% extends "sqladmin/layout.html" %}
+{# Read-only Review (annotated transcript + memo) for monitoring. Rendered by
+   TranscriptAdmin.view_review in app/admin.py; marks come from app/services/review_render.py.
+   The admin grid makes columns flex rows, hence d-block on the wrapper. #}
+
+{% macro marked(pieces) -%}
+{%- for p in pieces -%}
+{%- if p.classes %}<span class="{{ p.classes | join(' ') }}">{{ p.text }}</span>{% else %}{{ p.text }}{% endif -%}
+{%- endfor -%}
+{%- endmacro %}
+
+{% block content_header %}
+<div class="row align-items-center">
+  <div class="col">
+    <div class="page-pretitle">{{ subject.name }} · {{ session }} · transcript {{ transcript.id }} · read-only</div>
+    <h2 class="page-title">Review</h2>
+  </div>
+  <div class="col-auto d-flex gap-2">
+    <a href="{{ transcript_url }}" class="btn btn-secondary">Back to transcript</a>
+    <a href="{{ turns_url }}" class="btn btn-secondary">Turns</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="col-12 d-block">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>{% include "heirloom/review.css" %}</style>
+
+<div class="hr">
+  <header class="top"><div class="wrap">
+    <h1>{{ subject.name }}, {{ session_label | lower }}</h1>
+    <p class="meta">{{ turns | length }} exchanges. Owner: {{ owner.email }}. Read-only: this is what the user sees, for monitoring.</p>
+    <p class="readonly"><span class="tag system">System</span>marks and notes from the scorer and planning pass.
+      <span class="tag user">User</span>{{ owner.name }}'s own marks (green) and notes.</p>
+  </div></header>
+
+  <main class="wrap">
+    <div class="sheet" id="transcript">
+      {% if not turns %}
+      <p class="empty-state">This transcript hasn't been scored yet, so there are no marks. Score it from the transcript page.</p>
+      {% endif %}
+      {% for t in turns %}
+      <article class="turn" id="t-{{ t.turn.turn_index }}">
+        <div class="turn-main">
+          <div class="line"><span class="who"><span class="num">{{ t.position }}</span>Interviewer</span><p class="turn-text q">{{ marked(t.question) }}</p></div>
+          <div class="line"><span class="who">{{ subject.name }}</span><p class="turn-text a">{{ marked(t.answer) }}</p></div>
+        </div>
+        <aside class="margin" aria-label="Notes on exchange {{ t.position }}">
+          {% for n in t.notes %}
+          <div class="note{% if n.dismissed %} dismissed{% endif %}" data-kind="{{ n.kind }}">
+            <p class="label"><span class="tag system">System</span>{{ n.label }}{% if n.dismissed %} <span style="font-weight:400">(user disagreed)</span>{% endif %}</p>
+            {% if n.body %}<p class="body">{{ n.body }}</p>{% endif %}
+            {% if not n.anchored %}<p class="hint">The passage this refers to can no longer be found.</p>{% endif %}
+          </div>
+          {% endfor %}
+          {% for m in t.user_marks %}
+          <div class="note by-user" data-kind="yours">
+            <p class="label"><span class="tag user">User</span>{{ m.label }}</p>
+            <p class="body">“{{ m.quote }}”</p>
+            {% if not m.anchored %}<p class="hint">No longer found in the text, so not highlighted.</p>{% endif %}
+          </div>
+          {% endfor %}
+          {% if t.user_note %}
+          <div class="note by-user" data-kind="yours">
+            <p class="label"><span class="tag user">User</span>Note</p>
+            <p class="body" style="white-space:pre-line">{{ t.user_note }}</p>
+          </div>
+          {% endif %}
+        </aside>
+      </article>
+      {% endfor %}
+    </div>
+
+    <section class="sheet memo" aria-labelledby="memo-h">
+      <h2 id="memo-h">Notes for the next session</h2>
+      {% if not plan %}
+      <p class="empty-state">No plan for this session yet.</p>
+      {% else %}
+      {% if plan.intro %}<p class="intro">{{ plan.intro }}</p>{% endif %}
+      <p class="fine"><span class="tag system">System</span>suggestions. ☑ = ticked by the user; "edited" = the user reworded it.</p>
+
+      {% for th in plan.threads %}
+      <div class="thread blue">
+        <div><h3>{{ th.title }}</h3><p class="why">{{ th.why }}</p>
+          {% if th.turn_refs %}<p class="from">{% for ref in th.turn_refs %}{% if positions.get(ref) %}<a href="#t-{{ ref }}">Exchange {{ positions[ref] }}</a>{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}</p>{% endif %}
+        </div>
+        <div>
+          {% if th.question_items %}<h4>Questions to drill down on</h4>
+          <ul class="pick-list ticks">{% for i in th.question_items %}<li><span class="box" aria-label="{{ 'ticked' if i.picked else 'not ticked' }}">{{ '☑' if i.picked else '☐' }}</span><span class="editable">{{ i.text }}{% if i.edited %}<span class="edited">edited</span>{% endif %}</span></li>{% endfor %}</ul>{% endif %}
+          {% if th.direction_items %}<h4>Directions you could take</h4>
+          <ul class="pick-list dirs ticks">{% for i in th.direction_items %}<li><span class="box" aria-label="{{ 'ticked' if i.picked else 'not ticked' }}">{{ '☑' if i.picked else '☐' }}</span><span class="editable">{{ i.text }}{% if i.edited %}<span class="edited">edited</span>{% endif %}</span></li>{% endfor %}</ul>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if plan.leave_alone %}
+      <div class="thread"><div><h3>Leave alone</h3><p class="why">Places where pushing would cost more than it gains.</p></div><div>
+        <ul class="leave-list out">{% for i in plan.leave_alone if i.out %}<li><b>{{ i.label }}</b>{{ i.why }}</li>{% endfor %}</ul>
+        <ul class="leave-list">{% for i in plan.leave_alone if not i.out %}<li><b>{{ i.label }}</b>{{ i.why }}</li>{% endfor %}</ul>
+      </div></div>
+      {% endif %}
+
+      {% if plan.covered %}
+      <div class="thread"><div><h3>Already covered</h3><p class="why">No need to ask again.</p></div><div>
+        <ul class="leave-list">{% for i in plan.covered %}<li><b>{{ i.label }}</b>{{ i.why }}</li>{% endfor %}</ul>
+      </div></div>
+      {% endif %}
+
+      <div class="thread"><div><h3>How to ask</h3></div><div class="two">
+        <div>
+          {% if plan.how_to_ask_text %}<p>{{ plan.how_to_ask_text }}</p>{% endif %}
+          {% if plan.how_to_ask.try_instead %}<h4>Try instead</h4><p>{{ plan.how_to_ask.try_instead }}</p>{% endif %}
+          {% if plan.how_to_ask.what_worked %}<h4>What worked</h4><p>{{ plan.how_to_ask.what_worked }}</p>{% endif %}
+        </div>
+        <div>
+          {% if plan.bring %}<h4>Bring with you</h4><ul>{% for b in plan.bring %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+          {% if plan.for_narrative %}<h4>When the story is written</h4><ul>{% for b in plan.for_narrative %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+      </div></div>
+
+      <div class="mine-panel">
+        <h3><span class="tag user">User</span>Their list for the next session</h3>
+        <h4>Questions</h4>
+        {% if plan.picked_questions %}<ol>{% for q in plan.picked_questions %}<li>{{ q }}</li>{% endfor %}</ol>{% else %}<p class="empty">None ticked.</p>{% endif %}
+        <h4>Directions</h4>
+        {% if plan.picked_directions %}<ol>{% for d in plan.picked_directions %}<li>{{ d }}</li>{% endfor %}</ol>{% else %}<p class="empty">None ticked.</p>{% endif %}
+        <h4>Their own questions</h4>
+        {% if plan.own_questions %}<ol>{% for q in plan.own_questions %}<li>{{ q }}</li>{% endfor %}</ol>{% else %}<p class="empty">None.</p>{% endif %}
+        <h4>Anything else to remember</h4>
+        {% if plan.free_notes %}<p style="white-space:pre-line">{{ plan.free_notes }}</p>{% else %}<p class="empty">Nothing written.</p>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+  </main>
+</div>
+</div>
+{% endblock %}

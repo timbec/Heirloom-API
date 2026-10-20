@@ -23,6 +23,7 @@ from app.db import SessionLocal
 from app.models import InterviewSession, Narrative, Subject, Transcript, Turn, User
 from app.rate_limit import RateLimiter, client_ip
 from app.security import verify_password
+from app.services.review_render import plan_context, turn_context
 from app.services.turn_scoring import rescore_transcript
 from app.services.turns import TurnParseError
 
@@ -236,7 +237,47 @@ class TranscriptAdmin(ModelView, model=Transcript):
                 "page_url": lambda p: self._action_url(request, "view-turns", pk, page=str(p)),
                 "message": request.query_params.get("message"),
                 "score_url": self._action_url(request, "score-turns", pk),
+                "review_url": self._action_url(request, "view-review", pk),
                 "transcript_url": request.url_for("admin:details", identity="transcript", pk=pk),
+            },
+        )
+
+    @action(name="view-review", label="Review", add_in_list=False)
+    async def view_review(self, request: Request) -> Response:
+        """Read-only copy of the user's Review page (annotated transcript and memo)."""
+        pk = int(request.query_params.get("pks", "0").split(",")[0] or 0)
+        async with SessionLocal() as db:
+            transcript = await db.scalar(
+                select(Transcript)
+                .where(Transcript.id == pk)
+                .options(
+                    joinedload(Transcript.session)
+                    .joinedload(InterviewSession.subject)
+                    .joinedload(Subject.user),
+                    selectinload(Transcript.turns).selectinload(Turn.annotations),
+                    selectinload(Transcript.plan),
+                )
+            )
+        if transcript is None:
+            return RedirectResponse(request.url_for("admin:list", identity="transcript"))
+
+        session = transcript.session
+        plan = transcript.plan
+        return await self.templates.TemplateResponse(
+            request,
+            "heirloom/transcript_review.html",
+            {
+                "title": "Review",
+                "transcript": transcript,
+                "session": session,
+                "session_label": session.title or f"Session {session.id}",
+                "subject": session.subject,
+                "owner": session.subject.user,
+                "turns": [turn_context(t, i + 1) for i, t in enumerate(transcript.turns)],
+                "positions": {t.turn_index: i + 1 for i, t in enumerate(transcript.turns)},
+                "plan": plan_context(plan.content, plan.user_selections) if plan else None,
+                "transcript_url": request.url_for("admin:details", identity="transcript", pk=pk),
+                "turns_url": self._action_url(request, "view-turns", pk),
             },
         )
 

@@ -250,8 +250,7 @@ async def create_annotation(
         dismissed=False,
     )
     db.add(ann)
-    await db.flush()
-    await db.refresh(ann)
+    await db.commit()
     return _annotation_out(ann, text)
 
 
@@ -273,7 +272,7 @@ async def update_annotation(
     if payload.dismissed is not None:
         ann.dismissed = payload.dismissed
 
-    await db.flush()
+    await db.commit()
 
     turn = await db.get(Turn, ann.turn_id)
     text = _turn_text(turn, ann.field)
@@ -290,7 +289,7 @@ async def delete_annotation(
     if ann.author == "system":
         raise HTTPException(status_code=403, detail="Cannot delete system annotations.")
     await db.delete(ann)
-    await db.flush()
+    await db.commit()
     return Response(status_code=204)
 
 
@@ -302,7 +301,7 @@ async def dismiss_annotation(
     if ann.transcript_id != transcript_id:
         raise HTTPException(status_code=404, detail="Annotation not found.")
     ann.dismissed = payload.dismissed
-    await db.flush()
+    await db.commit()
     turn = await db.get(Turn, ann.turn_id)
     text = _turn_text(turn, ann.field)
     return _annotation_out(ann, text)
@@ -317,7 +316,7 @@ async def update_plan_selections(
     if plan is None:
         raise HTTPException(status_code=404, detail="No plan found for this transcript.")
     plan.user_selections = payload.model_dump()
-    await db.flush()
+    await db.commit()
     return plan.user_selections
 
 

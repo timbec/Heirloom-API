@@ -143,7 +143,7 @@ async def test_review_shows_marks_notes_and_memo(admin_browser: AsyncClient, see
     # Notes, distinguished by author; dismissal and unanchored states shown.
     assert "Something only she remembers." in page
     assert "(user disagreed)" in page
-    assert page.count('<span class="tag user">User</span>') >= 3  # mark, lost mark, note
+    assert page.count('<span class="author-tag user">User</span>') >= 3  # mark, lost mark, note
     assert "Ask about her rings." in page
     assert "No longer found in the text" in page
     assert OWNER in page
@@ -160,7 +160,7 @@ async def test_review_is_read_only_and_escaped(admin_browser: AsyncClient, seede
     page = (await admin_browser.get(review_url(seeded["transcript"]))).text
     assert "<b>not markup</b>" not in page
     assert "&lt;b&gt;not markup&lt;/b&gt;" in page
-    content = page.split('class="hr"', 1)[1]
+    content = page.split('class="hl-review"', 1)[1]
     assert "<textarea" not in content and "contenteditable" not in content
     assert "<input" not in content and "<form" not in content
 
@@ -206,3 +206,33 @@ def test_pieces_rejoin_exactly_and_combine_overlaps():
 def test_skip_note_label_comes_from_first_sentence():
     note = SimpleNamespace(kind="skip", quote="", body="Settled. June 1958, no need to ask again.")
     assert note_text(note) == ("Settled", "June 1958, no need to ask again.")  # type: ignore[arg-type]
+
+
+async def test_review_styles_dont_collide_with_the_admin_theme(admin_browser: AsyncClient, seeded):
+    """Tabler (the admin's UI kit) styles a `.hr` class as a divider at 16% opacity, which once
+    faded out the whole page. The review's root class must be one Tabler doesn't define."""
+    await login(admin_browser)
+    page = (await admin_browser.get(review_url(seeded["transcript"]))).text
+    assert '<div class="hl-review">' in page
+    assert 'class="hr"' not in page
+
+
+def test_no_review_class_is_also_styled_by_the_admin_theme():
+    """Guard against the next collision: every class used inside the review must be one Tabler
+    doesn't style on its own (it styled .hr, .tag and .empty, which distorted the page)."""
+    from pathlib import Path
+
+    import sqladmin
+
+    root = Path(__file__).parent.parent / "app" / "templates" / "heirloom"
+    template = (root / "transcript_review.html").read_text().split('<div class="hl-review">', 1)[1]
+    classes = {c for m in re.finditer(r'class="([^"{]*)"', template) for c in m.group(1).split()}
+    classes |= {"hl-review", "k-keep", "k-chase", "k-leave", "k-out", "k-told", "mine", "m-keep",
+                "m-chase", "m-leave", "stage", "aside", "dismissed", "by-user"}  # fmt: skip
+    theme = (Path(sqladmin.__file__).parent / "statics" / "css" / "tabler.min.css").read_text()
+    clashes = [
+        c
+        for c in sorted(classes)
+        if re.search(r"(^|[},>\s])\." + re.escape(c) + r"(?![\w-])\s*[,{:]", theme)
+    ]
+    assert clashes == []

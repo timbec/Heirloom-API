@@ -28,12 +28,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
 <style>{% include "heirloom/review.css" %}</style>
 
-<div class="hr">
+<div class="hl-review">
   <header class="top"><div class="wrap">
     <h1>{{ subject.name }}, {{ session_label | lower }}</h1>
     <p class="meta">{{ turns | length }} exchanges. Owner: {{ owner.email }}. Read-only: this is what the user sees, for monitoring.</p>
-    <p class="readonly"><span class="tag system">System</span>marks and notes from the scorer and planning pass.
-      <span class="tag user">User</span>{{ owner.name }}'s own marks (green) and notes.</p>
+    <p class="readonly"><span class="author-tag system">System</span>marks and notes from the scorer and planning pass.
+      <span class="author-tag user">User</span>{{ owner.name }}'s own marks (green) and notes.</p>
   </div></header>
 
   <main class="wrap">
@@ -50,21 +50,21 @@
         <aside class="margin" aria-label="Notes on exchange {{ t.position }}">
           {% for n in t.notes %}
           <div class="note{% if n.dismissed %} dismissed{% endif %}" data-kind="{{ n.kind }}">
-            <p class="label"><span class="tag system">System</span>{{ n.label }}{% if n.dismissed %} <span style="font-weight:400">(user disagreed)</span>{% endif %}</p>
+            <p class="label"><span class="author-tag system">System</span>{{ n.label }}{% if n.dismissed %} <span style="font-weight:400">(user disagreed)</span>{% endif %}</p>
             {% if n.body %}<p class="body">{{ n.body }}</p>{% endif %}
             {% if not n.anchored %}<p class="hint">The passage this refers to can no longer be found.</p>{% endif %}
           </div>
           {% endfor %}
           {% for m in t.user_marks %}
           <div class="note by-user" data-kind="yours">
-            <p class="label"><span class="tag user">User</span>{{ m.label }}</p>
+            <p class="label"><span class="author-tag user">User</span>{{ m.label }}</p>
             <p class="body">“{{ m.quote }}”</p>
             {% if not m.anchored %}<p class="hint">No longer found in the text, so not highlighted.</p>{% endif %}
           </div>
           {% endfor %}
           {% if t.user_note %}
           <div class="note by-user" data-kind="yours">
-            <p class="label"><span class="tag user">User</span>Note</p>
+            <p class="label"><span class="author-tag user">User</span>Note</p>
             <p class="body" style="white-space:pre-line">{{ t.user_note }}</p>
           </div>
           {% endif %}
@@ -79,7 +79,7 @@
       <p class="empty-state">No plan for this session yet.</p>
       {% else %}
       {% if plan.intro %}<p class="intro">{{ plan.intro }}</p>{% endif %}
-      <p class="fine"><span class="tag system">System</span>suggestions. ☑ = ticked by the user; "edited" = the user reworded it.</p>
+      <p class="fine"><span class="author-tag system">System</span>suggestions. ☑ = ticked by the user; "edited" = the user reworded it.</p>
 
       {% for th in plan.threads %}
       <div class="thread blue">
@@ -121,15 +121,15 @@
       </div></div>
 
       <div class="mine-panel">
-        <h3><span class="tag user">User</span>Their list for the next session</h3>
+        <h3><span class="author-tag user">User</span>Their list for the next session</h3>
         <h4>Questions</h4>
-        {% if plan.picked_questions %}<ol>{% for q in plan.picked_questions %}<li>{{ q }}</li>{% endfor %}</ol>{% else %}<p class="empty">None ticked.</p>{% endif %}
+        {% if plan.picked_questions %}<ol>{% for q in plan.picked_questions %}<li>{{ q }}</li>{% endfor %}</ol>{% else %}<p class="empty-list">None ticked.</p>{% endif %}
         <h4>Directions</h4>
-        {% if plan.picked_directions %}<ol>{% for d in plan.picked_directions %}<li>{{ d }}</li>{% endfor %}</ol>{% else %}<p class="empty">None ticked.</p>{% endif %}
+        {% if plan.picked_directions %}<ol>{% for d in plan.picked_directions %}<li>{{ d }}</li>{% endfor %}</ol>{% else %}<p class="empty-list">None ticked.</p>{% endif %}
         <h4>Their own questions</h4>
-        {% if plan.own_questions %}<ol>{% for q in plan.own_questions %}<li>{{ q }}</li>{% endfor %}</ol>{% else %}<p class="empty">None.</p>{% endif %}
+        {% if plan.own_questions %}<ol>{% for q in plan.own_questions %}<li>{{ q }}</li>{% endfor %}</ol>{% else %}<p class="empty-list">None.</p>{% endif %}
         <h4>Anything else to remember</h4>
-        {% if plan.free_notes %}<p style="white-space:pre-line">{{ plan.free_notes }}</p>{% else %}<p class="empty">Nothing written.</p>{% endif %}
+        {% if plan.free_notes %}<p style="white-space:pre-line">{{ plan.free_notes }}</p>{% else %}<p class="empty-list">Nothing written.</p>{% endif %}
       </div>
       {% endif %}
     </section>

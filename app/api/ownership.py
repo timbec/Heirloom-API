@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.models import InterviewSession, Subject, Transcript, User
+from app.models.annotation import Annotation
 
 
 def _check_owner(owner_id: int, user: User) -> None:
@@ -48,3 +49,22 @@ async def get_owned_transcript(db: AsyncSession, transcript_id: int, user: User)
         raise HTTPException(status_code=404, detail="Transcript not found.")
     _check_owner(transcript.session.subject.user_id, user)
     return transcript
+
+
+async def get_owned_annotation(
+    db: AsyncSession, annotation_id: int, user: User
+) -> Annotation:
+    """The annotation with its transcript's session and subject loaded."""
+    annotation = await db.scalar(
+        select(Annotation)
+        .where(Annotation.id == annotation_id)
+        .options(
+            joinedload(Annotation.transcript)
+            .joinedload(Transcript.session)
+            .joinedload(InterviewSession.subject)
+        )
+    )
+    if annotation is None:
+        raise HTTPException(status_code=404, detail="Annotation not found.")
+    _check_owner(annotation.transcript.session.subject.user_id, user)
+    return annotation

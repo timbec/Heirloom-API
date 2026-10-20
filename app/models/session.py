@@ -19,6 +19,8 @@ from app.models.base import Base, str_enum
 from app.models.enums import JobStatus, Sensitivity, SessionStatus, ThreadType, TranscriptSource
 
 if TYPE_CHECKING:
+    from app.models.annotation import Annotation
+    from app.models.plan import SessionPlan
     from app.models.subject import Subject
 
 
@@ -67,6 +69,17 @@ class Transcript(Base):
         passive_deletes=True,
         order_by="Turn.turn_index",
     )
+    annotations: Mapped[list["Annotation"]] = relationship(
+        back_populates="transcript",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    plan: Mapped["SessionPlan | None"] = relationship(
+        back_populates="transcript",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
 
     def __str__(self) -> str:
         return f"Transcript {self.id}"
@@ -99,7 +112,18 @@ class Turn(Base):
     # Which model and prompt version produced the scores, e.g. "openai/gpt-oss-120b, prompt v2".
     scored_with: Mapped[str | None] = mapped_column(String(150))
 
+    # Review-phase fields — populated by the reviewer, not the scorer.
+    retracted: Mapped[bool | None] = mapped_column(Boolean)
+    unable_to_recall: Mapped[bool | None] = mapped_column(Boolean)
+    repeat_of: Mapped[int | None] = mapped_column(Integer)  # turn_index of the earlier turn
+    thread_anchor: Mapped[str | None] = mapped_column(Text)
+
     transcript: Mapped[Transcript] = relationship(back_populates="turns")
+    annotations: Mapped[list["Annotation"]] = relationship(
+        back_populates="turn",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     def __str__(self) -> str:
         return f"Turn {self.turn_index}"

@@ -11,7 +11,334 @@ from app.db import SessionLocal, engine
 from app.models import User
 from app.security import hash_password
 
+# ─── Frances seed data ──────────────────────────────────────────────────────
+
+_FRANCES_TURNS = [
+    {
+        "turn_index": 1,
+        "question": "Where did you grow up?",
+        "answer": (
+            "Fourth Street. Yes. Well, we — it was my father’s house. No, my grandmother’s. "
+            "It was my grandmother’s house and we all — there was a porch. Is that thing on? "
+            "[laughs] Linda, is it on? Okay. So there was the porch and the, um, the... my father would "
+            "sit there. After. He’d come home all black. Black from the — from the plant. And "
+            "my mother wouldn’t let him in the kitchen until he washed at the... there was a sink, "
+            "out back, by the coal. By the coal bin. Cold water. Even in winter, cold water."
+        ),
+        "gold_quote": "He’d come home all black. Black from the — from the plant.",
+        "thread_anchor": "there was a porch",
+    },
+    {
+        "turn_index": 2,
+        "question": "What was your mother like?",
+        "answer": (
+            "Oh, she kept house. Everybody’s mother kept house then. She was a good woman. "
+            "Very religious. We went to church every Sunday, St. Stanislaus, everybody did. She was a "
+            "good mother. She worked hard. They all worked hard then, people don’t know."
+        ),
+    },
+    {
+        "turn_index": 3,
+        "question": "What did she cook?",
+        "answer": (
+            "Pierogi. Well. Everybody says pierogi. [pause] She had — her hands were always red. "
+            "From the, uh, the lye soap. She’d make the dough and her knuckles would crack, right "
+            "here, and she’d put lard on them. Lard! Can you imagine. Rub it in like hand cream. "
+            "[pause] I don’t know why I remember that."
+        ),
+        "gold_quote": (
+            "She had — her hands were always red. From the, uh, the lye soap. She’d make "
+            "the dough and her knuckles would crack, right here, and she’d put lard on them. Lard!"
+        ),
+    },
+    {
+        "turn_index": 4,
+        "question": "How did you meet Eddie?",
+        "answer": (
+            "Eddie. Eddie was — we met at the dance, at the, the Sokol hall. He had that car. "
+            "A Ford. A green — no. No, it was his brother’s car, he didn’t have a car. "
+            "[pause] Or was that Walt? Walt had the car. Walt had the green car. [pause] I went with "
+            "Walt first, you know. Before your father. For a while. Don’t put that in."
+        ),
+        "thread_anchor": "we met at the dance, at the, the Sokol hall",
+        "retracted": True,
+    },
+    {
+        "turn_index": 5,
+        "question": "When did you get married?",
+        "answer": (
+            "Fifty... fifty-six. No. Fifty-eight. Your brother was born in fifty-nine, so — "
+            "[pause] Fifty-eight. June. It rained."
+        ),
+    },
+    {
+        "turn_index": 6,
+        "question": "Tell me about that — washing in the cold water.",
+        "answer": (
+            "Well, my father, you know, he’d come home from the plant and he’d wash out back. "
+            "My mother wouldn’t let him in. There was a sink down in the cellar, by the coal, and "
+            "he’d wash there with the cold water, even in the winter. Black. All black from the "
+            "plant. [pause] Did I tell you that?"
+        ),
+        "repeat_of": 1,
+    },
+    {
+        "turn_index": 7,
+        "question": "You got married in June — was it a big wedding?",
+        "answer": (
+            "Were we? Oh. Well, it rained. Everybody said rain was lucky. [pause] Is your sister "
+            "coming today? [Linda: Ma, Carol’s in Arizona.] Oh, that’s right. That’s "
+            "right. She told me. She called. [pause] What were we saying?"
+        ),
+        "unable_to_recall": True,
+    },
+    {
+        "turn_index": 8,
+        "question": "You mentioned working at Woolworth’s — what was that like?",
+        "answer": (
+            "Oh, I loved that. I loved it. The lunch counter. Grilled cheese was thirty-five cents. "
+            "Or — no, a quarter. A quarter, I think. And the steel men would come in at the shift "
+            "change, all at once, you had to have the coffee ready, forty cups lined up on the counter, "
+            "because they’d only have — they had fifteen minutes. Fifteen minutes and then "
+            "back. And there was one, he always left a nickel under the saucer. Every day. Never said "
+            "a word. Every single day, a nickel under the saucer. I never knew his name."
+        ),
+        "gold_quote": "Every day. Never said a word. Every single day, a nickel under the saucer.",
+    },
+    {
+        "turn_index": 9,
+        "question": "Why did you leave Woolworth’s?",
+        "answer": (
+            "Well, when you get married, you — [long pause] I don’t remember. I don’t. "
+            "Isn’t that terrible? [pause] I don’t know why I stopped. I liked it there."
+        ),
+        "unable_to_recall": True,
+    },
+    {
+        "turn_index": 10,
+        "question": "Is there anything else you want to tell me about your father?",
+        "answer": (
+            "My father. When he washed out back, by the coal — he’d sing. Did I tell you "
+            "that? He sang in Polish. Every night, washing. I don’t know the words. I never "
+            "learned. My mother didn’t want us talking Polish, she wanted us to be American. "
+            "[pause] I wish I knew the words."
+        ),
+        "gold_quote": (
+            "He sang in Polish. Every night, washing. I don’t know the words. I never learned."
+        ),
+        "thread_anchor": "I wish I knew the words.",
+    },
+]
+
+_FRANCES_PLAN_CONTENT = {
+    "intro": (
+        "Frances was at her best with things she could see in her mind: the saucer, the lard, "
+        "the sink by the coal bin, her father singing. She was weakest on dates, names and ‘what "
+        "was she like’ questions. Next time, ask about objects and moments rather than years and "
+        "people. Keep it short, and stop when she says ‘What were we saying?’"
+    ),
+    "threads": [
+        {
+            "title": "Her father’s singing",
+            "why": "The strongest thread of the session, and she opened it herself.",
+            "turn_refs": [10],
+            "questions": [
+                "What did your father’s singing sound like? Was it the same song every night?",
+                "Can you hum any of it, even without the words?",
+                "Is there anyone who might still know the words: an aunt, a cousin, someone from St. Stanislaus?",
+            ],
+            "directions": [
+                "Why her mother wanted them to be American, and what Polish meant at home",
+                "Music in the house and at church",
+            ],
+        },
+        {
+            "title": "The nickel under the saucer",
+            "why": "A complete little story. She never knew his name, so skip asking who he was.",
+            "turn_refs": [8],
+            "questions": [
+                "What did you do with the nickels?",
+                "Did you ever wonder why he did it?",
+                "Picture the counter at shift change. What could you hear and smell, and where did you stand?",
+            ],
+            "directions": [
+                "The other women at the counter, and what the job meant to her at that age",
+                "What she did with her first pay",
+            ],
+        },
+        {
+            "title": "Her mother’s hands",
+            "why": "She went past the stock answer to something only she would remember.",
+            "turn_refs": [3],
+            "questions": [
+                "Tell me more about your mother’s hands. What else did she do with them?",
+                "Who taught you to make the dough?",
+                "Where in the kitchen did she work? Standing, or sitting at a table?",
+            ],
+            "directions": [
+                "The kitchen as a room: who sat where, and what Sunday meals were like",
+            ],
+        },
+        {
+            "title": "The dance at the Sokol hall",
+            "why": "How she met Eddie never got told. Ask about the hall, not about who else she danced with.",
+            "turn_refs": [4],
+            "questions": [
+                "What do you remember about the Sokol hall: the music, the floor, what you wore?",
+                "Who asked whom to dance?",
+            ],
+            "directions": [
+                "Eddie as a young man: what she noticed first about him",
+            ],
+        },
+        {
+            "title": "The porch and Fourth Street",
+            "why": "Her father sat there after the plant. There is a whole street behind that sentence.",
+            "turn_refs": [1],
+            "questions": [
+                "Who sat on the porch in the evening, and what did you talk about?",
+                "What did you do while your father was washing up?",
+            ],
+            "directions": [
+                "The neighbours on Fourth Street",
+            ],
+        },
+    ],
+    "leave_alone": [
+        {
+            "label": "Walt",
+            "why": "She asked for this to be left out. If she brings it up again, that’s her call, and yours.",
+            "out": True,
+        },
+        {
+            "label": "Why she left Woolworth’s",
+            "why": "She couldn’t remember and it upset her. If the answer comes up on its own, good.",
+            "out": False,
+        },
+        {
+            "label": "The wedding day",
+            "why": "She lost the thread. Try again with the photograph in front of her.",
+            "out": False,
+        },
+    ],
+    "covered": [
+        {"label": "Washing at the coal bin", "why": "Told twice. One version is enough."},
+        {"label": "When they married", "why": "June 1958, settled."},
+    ],
+    "how_to_ask": {
+        "try_instead": (
+            'Try instead of “What was your mother like?”: '
+            '“Tell me about a Sunday at your house.” A scene gives her something to see. '
+            "A person or a year asks her to summarise."
+        ),
+        "what_worked": (
+            "When you said “That’s okay, Ma. It doesn’t matter,” the pressure "
+            "lifted and the best answer of the session came next."
+        ),
+    },
+    "bring": [
+        "The wedding photograph",
+        "A nickel",
+        "A recording of Polish hymns or folk songs, if you can find one",
+        "Her dough board or rolling pin, if the family still has it",
+    ],
+    "for_narrative": [
+        "Leave out the Walt exchange entirely",
+        "Use “my grandmother’s house”: she corrected herself",
+        "Tell the coal-bin story once",
+        "Don’t supply a reason she left Woolworth’s",
+    ],
+}
+
 MIN_PASSWORD_LENGTH = 8
+
+
+async def seed_review() -> None:
+    """Seed the Frances transcript and session plan for UI development."""
+    from app.models.enums import JobStatus, TranscriptSource
+    from app.models.plan import SessionPlan
+    from app.models.session import InterviewSession, Transcript, Turn
+    from app.models.subject import Subject
+    from app.services.annotations import regenerate_system_annotations
+
+    async with SessionLocal() as db:
+        # 1. Demo user.
+        demo_email = "demo@heirloom.app"
+        user = await db.scalar(select(User).where(User.email == demo_email))
+        if user is None:
+            user = User(
+                email=demo_email,
+                name="Demo User",
+                password_hash=hash_password("demo"),
+                is_admin=False,
+            )
+            db.add(user)
+            await db.flush()
+
+        # 2. Subject.
+        subject = Subject(user_id=user.id, name="Frances")
+        db.add(subject)
+        await db.flush()
+
+        # 3. Session.
+        session = InterviewSession(subject_id=subject.id, title="Session 1")
+        db.add(session)
+        await db.flush()
+
+        # 4. Transcript.
+        full_text = "\n\n".join(
+            f"Q: {t['question']}\nA: {t['answer']}" for t in _FRANCES_TURNS
+        )
+        transcript = Transcript(
+            session_id=session.id,
+            transcript_text=full_text,
+            status=JobStatus.COMPLETED,
+            source=TranscriptSource.MANUAL,
+        )
+        db.add(transcript)
+        await db.flush()
+
+        # 5. Turns with scores.
+        for t in _FRANCES_TURNS:
+            turn = Turn(
+                transcript_id=transcript.id,
+                turn_index=t["turn_index"],
+                question=t["question"],
+                answer=t["answer"],
+                gold_quote=t.get("gold_quote"),
+                thread_anchor=t.get("thread_anchor"),
+                retracted=t.get("retracted"),
+                unable_to_recall=t.get("unable_to_recall"),
+                repeat_of=t.get("repeat_of"),
+            )
+            db.add(turn)
+        await db.flush()
+
+        # 6. System annotations.
+        await regenerate_system_annotations(db, transcript)
+
+        # 7. Session plan.
+        plan = SessionPlan(
+            transcript_id=transcript.id,
+            content=_FRANCES_PLAN_CONTENT,
+            user_selections={
+                "picked_questions": {},
+                "picked_directions": {},
+                "own_questions": [],
+                "free_notes": "",
+                "edited_questions": {},
+            },
+        )
+        db.add(plan)
+        await db.commit()
+
+        print(
+            f"Seeded Frances review:\n"
+            f"  user:       {demo_email} / demo\n"
+            f"  subject id: {subject.id}\n"
+            f"  session id: {session.id}\n"
+            f"  transcript id: {transcript.id}"
+        )
 
 
 async def create_user(email: str, name: str, password: str, admin: bool) -> User:
@@ -53,6 +380,8 @@ async def _run(args: argparse.Namespace) -> None:
         elif args.command == "set-password":
             await set_password(args.email, _read_password(args.password))
             print(f"Password updated for {args.email}.")
+        elif args.command == "seed-review":
+            await seed_review()
     finally:
         await engine.dispose()
 
@@ -70,6 +399,8 @@ def main(argv: list[str] | None = None) -> None:
     reset = commands.add_parser("set-password", help="Set a user's password")
     reset.add_argument("--email", required=True)
     reset.add_argument("--password", help="Omit to be prompted")
+
+    commands.add_parser("seed-review", help="Seed Frances transcript + plan for UI development")
 
     asyncio.run(_run(parser.parse_args(argv)))
 

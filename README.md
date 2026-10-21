@@ -8,7 +8,7 @@ This is the **backend** for Heirloom: the part that stores everything, runs the 
 
 An adult child interviews an elderly parent. Heirloom helps turn those conversations into a life story:
 
-1. **Record or paste the interview.** Type or paste a transcript, or upload a recording (a phone voice memo works) and the AI writes it out.
+1. **Record or paste the interview.** Type or paste a transcript, or upload a recording (a phone voice memo works) and the AI writes it out. Voice recording feature still in progress. 
 2. **Find what matters.** The AI goes through the interview answer by answer. It marks the lines worth keeping word for word ("gold"), the threads worth following up next time, and the places to leave alone.
 3. **Review it.** The interviewer sees the transcript marked up, with notes in the margin, and can add their own marks and notes.
 4. **Plan the next session.** A memo suggests questions for next time, which the interviewer can tick, edit or add to.

@@ -1,0 +1,47 @@
+{% extends "sqladmin/layout.html" %}
+{# Every transcript's Review, newest first. Rendered by ReviewsAdmin.reviews in app/admin.py. #}
+
+{% block content_header %}
+<div class="row align-items-center">
+  <div class="col">
+    <div class="page-pretitle">Read-only copies of what each user sees on their Review page</div>
+    <h2 class="page-title">Reviews</h2>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="col-12 d-block">
+  <div class="card">
+    {% if not rows %}
+    <div class="card-body">No transcripts yet.</div>
+    {% else %}
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter">
+        <thead>
+          <tr>
+            <th>Subject</th><th>Session</th><th>Owner</th>
+            <th class="text-end">Exchanges</th><th class="text-end">System marks</th>
+            <th class="text-end">User marks</th><th>Plan</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.subject.name }}</td>
+            <td>{{ r.session }}</td>
+            <td class="text-secondary">{{ r.owner.email }}</td>
+            <td class="text-end">{{ r.turns if r.turns else "not scored" }}</td>
+            <td class="text-end">{{ r.system_marks }}</td>
+            <td class="text-end">{{ r.user_marks }}</td>
+            <td>{{ "yes" if r.has_plan else "—" }}</td>
+            <td class="text-end"><a class="btn btn-sm" href="{{ r.url }}">Open review</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

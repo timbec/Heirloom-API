@@ -11,9 +11,9 @@ from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException
 from markupsafe import Markup, escape
-from sqladmin import Admin, ModelView, action
+from sqladmin import Admin, BaseView, ModelView, action, expose
 from sqladmin.authentication import AuthenticationBackend
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
@@ -21,6 +21,8 @@ from starlette.responses import RedirectResponse, Response
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models import InterviewSession, Narrative, Subject, Transcript, Turn, User
+from app.models.annotation import Annotation
+from app.models.plan import SessionPlan
 from app.rate_limit import RateLimiter, client_ip
 from app.security import verify_password
 from app.services.review_render import plan_context, turn_context
@@ -155,7 +157,8 @@ class TranscriptAdmin(ModelView, model=Transcript):
         label="Score turns",
         confirmation_message=(
             "Split the selected transcript(s) into turns and score each one with the AI? "
-            "Earlier scores are replaced. This can take a minute or two per transcript."
+            "Earlier scores and system marks are replaced; the user's own marks, notes and "
+            "'I disagree' choices are kept. This can take a minute or two per transcript."
         ),
     )
     async def score_turns(self, request: Request) -> Response:
@@ -329,6 +332,77 @@ class NarrativeAdmin(ModelView, model=Narrative):
     can_edit = False
 
 
+class ReviewsAdmin(BaseView):
+    """Sidebar entry listing every transcript's Review, so it's findable without going through
+    Transcripts. Each row links to the read-only Review page."""
+
+    name = "Reviews"
+    icon = "fa-solid fa-highlighter"
+
+    @expose("/reviews", methods=["GET"])
+    async def reviews(self, request: Request) -> Response:
+        def count(*where) -> object:
+            return (
+                select(func.count(Annotation.id))
+                .where(Annotation.transcript_id == Transcript.id, *where)
+                .correlate(Transcript)
+                .scalar_subquery()
+            )
+
+        turns = (
+            select(func.count(Turn.id))
+            .where(Turn.transcript_id == Transcript.id)
+            .correlate(Transcript)
+            .scalar_subquery()
+        )
+        has_plan = (
+            select(func.count(SessionPlan.id))
+            .where(SessionPlan.transcript_id == Transcript.id)
+            .correlate(Transcript)
+            .scalar_subquery()
+        )
+        query = (
+            select(
+                Transcript,
+                turns,
+                count(Annotation.author == "system", Annotation.kind != "note"),
+                count(Annotation.author == "user"),
+                has_plan,
+            )
+            .options(
+                joinedload(Transcript.session)
+                .joinedload(InterviewSession.subject)
+                .joinedload(Subject.user)
+            )
+            .order_by(Transcript.id.desc())
+        )
+        async with SessionLocal() as db:
+            rows = (await db.execute(query)).all()
+
+        review_url = str(request.url_for("admin:action-transcript-view-review"))
+        return await self.templates.TemplateResponse(
+            request,
+            "heirloom/reviews_list.html",
+            {
+                "title": "Reviews",
+                "rows": [
+                    {
+                        "transcript": transcript,
+                        "session": transcript.session,
+                        "subject": transcript.session.subject,
+                        "owner": transcript.session.subject.user,
+                        "turns": n_turns,
+                        "system_marks": n_system,
+                        "user_marks": n_user,
+                        "has_plan": bool(n_plan),
+                        "url": f"{review_url}?{urlencode({'pks': transcript.id})}",
+                    }
+                    for transcript, n_turns, n_system, n_user, n_plan in rows
+                ],
+            },
+        )
+
+
 def mount_admin(app: FastAPI) -> Admin:
     settings = get_settings()
     admin = Admin(
@@ -344,6 +418,14 @@ def mount_admin(app: FastAPI) -> Admin:
             same_site="lax",
         ),
     )
-    for view in (UserAdmin, SubjectAdmin, SessionAdmin, TranscriptAdmin, TurnAdmin, NarrativeAdmin):
+    for view in (
+        UserAdmin,
+        SubjectAdmin,
+        SessionAdmin,
+        TranscriptAdmin,
+        TurnAdmin,
+        NarrativeAdmin,
+        ReviewsAdmin,
+    ):
         admin.add_view(view)
     return admin

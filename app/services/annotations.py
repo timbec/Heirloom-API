@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.annotation import Annotation
+from app.models.enums import Sensitivity
 from app.models.session import Transcript, Turn
 
 
@@ -31,72 +32,45 @@ def reanchor(annotation: Annotation, text: str) -> tuple[int, int] | None:
     return None
 
 
-# ─── kind → source field mapping ───────────────────────────────────────────
+# ─── deriving system annotations from turn fields ──────────────────────────
 
-_KIND_TO_FIELD = {
-    "keep": "gold_quote",
-    "chase": "thread_anchor",
-    "out": "retracted",
-    "leave": "unable_to_recall",
-    "told": "repeat_of",
-}
+# The kinds derived from turn fields, one system annotation of each per turn at most.
+_DERIVED_KINDS = ("keep", "chase", "out", "leave", "told")
+
+HANDLE_WITH_CARE_NOTE = (
+    "Handle with care. This was painful or hard to talk about. Let them lead if it comes up again."
+)
 
 
-def _system_annotation_body(kind: str, turn: Turn) -> tuple[int, int, str] | None:
-    """Return (start, end, quote) for a system annotation, or None if the source is absent."""
+def _span(answer: str, quote: str) -> tuple[int, int, str]:
+    start = answer.find(quote)
+    return (start, start + len(quote), quote) if start != -1 else (0, len(quote), quote)
+
+
+def _derive(kind: str, turn: Turn) -> tuple[int, int, str, str | None] | None:
+    """(start, end, quote, body) for a system annotation of this kind, or None if the turn gives
+    no reason for one. An empty quote means a margin note with no highlight. A body of None
+    leaves any existing note text alone (the seed's mockup text, for instance)."""
     answer = turn.answer
-    if kind == "keep":
-        quote = turn.gold_quote
-        if not quote:
-            return None
-        start = answer.find(quote)
-        if start == -1:
-            start, end = 0, len(quote)
-        else:
-            end = start + len(quote)
-        return start, end, quote
+    whole = (0, len(answer), answer, None)
 
+    if kind == "keep" and turn.gold_quote:
+        return (*_span(answer, turn.gold_quote), None)
     if kind == "chase":
-        quote = turn.thread_anchor
-        if not quote:
-            return None
-        start = answer.find(quote)
-        if start == -1:
-            start, end = 0, len(quote)
-        else:
-            end = start + len(quote)
-        return start, end, quote
-
-    if kind == "out":
-        if not turn.retracted:
-            return None
-        return 0, len(answer), answer
-
+        if turn.thread_anchor:
+            return (*_span(answer, turn.thread_anchor), None)
+        if turn.open_thread:  # what the scorer produces: a note, no highlight
+            return 0, 0, "", turn.open_thread
+    if kind == "out" and (turn.retracted or turn.sensitivity == Sensitivity.OFF_RECORD):
+        return whole
     if kind == "leave":
-        if not turn.unable_to_recall:
-            return None
-        return 0, len(answer), answer
-
-    if kind == "told":
-        if turn.repeat_of is None:
-            return None
-        return 0, len(answer), answer
-
+        if turn.unable_to_recall:
+            return whole
+        if turn.sensitivity == Sensitivity.HANDLE_WITH_CARE:  # scoring prompt v2
+            return 0, 0, "", HANDLE_WITH_CARE_NOTE
+    if kind == "told" and turn.repeat_of is not None:
+        return whole
     return None
-
-
-def _source_is_present(kind: str, turn: Turn) -> bool:
-    if kind == "keep":
-        return bool(turn.gold_quote)
-    if kind == "chase":
-        return bool(turn.thread_anchor)
-    if kind == "out":
-        return bool(turn.retracted)
-    if kind == "leave":
-        return bool(turn.unable_to_recall)
-    if kind == "told":
-        return turn.repeat_of is not None
-    return False
 
 
 async def regenerate_system_annotations(db: AsyncSession, transcript: Transcript) -> None:
@@ -116,20 +90,22 @@ async def regenerate_system_annotations(db: AsyncSession, transcript: Transcript
             a.kind: a for a in turn.annotations if a.author == "system"
         }
 
-        for kind in _KIND_TO_FIELD:
-            pos = _system_annotation_body(kind, turn)
-            if pos is None:
+        for kind in _DERIVED_KINDS:
+            derived = _derive(kind, turn)
+            if derived is None:
                 # Source field absent — delete stale system annotation if any.
                 if kind in existing:
                     await db.delete(existing[kind])
                 continue
 
-            start, end, quote = pos
+            start, end, quote, body = derived
             if kind in existing:
                 ann = existing[kind]
                 ann.quote = quote
                 ann.start = start
                 ann.end = end
+                if body is not None:
+                    ann.body = body
                 # dismissed is intentionally preserved
             else:
                 ann = Annotation(
@@ -141,7 +117,7 @@ async def regenerate_system_annotations(db: AsyncSession, transcript: Transcript
                     quote=quote,
                     author="system",
                     kind=kind,
-                    body=None,
+                    body=body,
                     dismissed=False,
                 )
                 db.add(ann)

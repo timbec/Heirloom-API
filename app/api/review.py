@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import DB, CurrentUser
 from app.api.ownership import get_owned_annotation, get_owned_transcript
 from app.models.annotation import Annotation
+from app.models.enums import Sensitivity
 from app.models.plan import SessionPlan
 from app.models.session import Turn
 from app.services.annotations import reanchor
@@ -106,7 +107,9 @@ def _turn_text(turn: Turn, field: str) -> str:
 
 
 def visible_turns(turns: list[Turn]) -> list[Turn]:
-    return [t for t in turns if not t.retracted]
+    """Turns that may appear in exports: not retracted, and not marked off the record by the
+    scorer ("don't put that in")."""
+    return [t for t in turns if not t.retracted and t.sensitivity != Sensitivity.OFF_RECORD]
 
 
 def _inline_mark(text: str, annotations: list[Annotation]) -> str:
